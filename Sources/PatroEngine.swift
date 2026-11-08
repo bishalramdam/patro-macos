@@ -116,10 +116,21 @@ class PatroEngine: ObservableObject {
         didSet { refreshToday() }
     }
     @Published var language: String = "Nepali" {
-        didSet { refreshMonth() }
+        didSet {
+            if language == "English" && numerals == "Devanagari" {
+                numerals = "Latin"
+            } else if language == "Nepali" && numerals == "Latin" {
+                numerals = "Devanagari"
+            }
+            refreshMonth()
+            refreshToday()
+        }
     }
     @Published var numerals: String = "Devanagari" {
-        didSet { refreshMonth() }
+        didSet {
+            refreshMonth()
+            refreshToday()
+        }
     }
     @Published var showGregorianInGrid: Bool = true
     @Published var showTithiInGrid: Bool = true
@@ -195,7 +206,19 @@ class PatroEngine: ObservableObject {
     }
     
     func refreshToday() {
+        let previousDay = todayInfo?.day
         executeRefreshToday()
+        if let today = todayInfo {
+            // If day changed (e.g. midnight passed or computer woke up)
+            if previousDay != nil && previousDay != today.day {
+                if isViewingToday() {
+                    viewYear = today.year
+                    viewMonth = today.month
+                    executeRefreshMonth()
+                    selectToday()
+                }
+            }
+        }
     }
     
     private func executeRefreshToday() {
@@ -219,10 +242,10 @@ class PatroEngine: ObservableObject {
            let month = try? decoder.decode(MonthData.self, from: data) {
             self.currentMonth = month
             
-            if let selected = self.selectedDay, selected.year == self.viewYear && selected.month == self.viewMonth {
-                self.selectDayNumber(selected.day)
-            } else if self.isViewingToday() {
+            if self.isViewingToday() {
                 self.selectToday()
+            } else if let selected = self.selectedDay, selected.year == self.viewYear && selected.month == self.viewMonth {
+                self.selectDayNumber(selected.day)
             } else {
                 self.selectDayNumber(1)
             }
@@ -336,6 +359,97 @@ class PatroEngine: ObservableObject {
             return "\(today.cleanYearLabel) (\(today.gregorian.day) \(gName))"
         default:
             return today.cleanYearLabel
+        }
+    }
+    
+    // MARK: - Date Selection & Navigation Helpers
+    
+    static let nepaliMonths: [(id: Int, name: String, enName: String)] = [
+        (1, "बैशाख", "Baisakh"),
+        (2, "जेठ", "Jestha"),
+        (3, "असार", "Ashadh"),
+        (4, "साउन", "Shrawan"),
+        (5, "भदौ", "Bhadra"),
+        (6, "असोज", "Ashwin"),
+        (7, "कात्तिक", "Kartik"),
+        (8, "मङ्सिर", "Mangsir"),
+        (9, "पुस", "Poush"),
+        (10, "माघ", "Magh"),
+        (11, "फागुन", "Falgun"),
+        (12, "चैत", "Chaitra")
+    ]
+    
+    static let gregorianMonths: [(id: Int, name: String, shortName: String)] = [
+        (1, "January", "Jan"),
+        (2, "February", "Feb"),
+        (3, "March", "Mar"),
+        (4, "April", "Apr"),
+        (5, "May", "May"),
+        (6, "June", "Jun"),
+        (7, "July", "Jul"),
+        (8, "August", "Aug"),
+        (9, "September", "Sep"),
+        (10, "October", "Oct"),
+        (11, "November", "Nov"),
+        (12, "December", "Dec")
+    ]
+    
+    func devanagariNumber(_ num: Int) -> String {
+        let devanagariDigits: [Character: Character] = [
+            "0": "०", "1": "१", "2": "२", "3": "३", "4": "४",
+            "5": "५", "6": "६", "7": "७", "8": "८", "9": "९"
+        ]
+        let latinStr = String(num)
+        return String(latinStr.map { devanagariDigits[$0] ?? $0 })
+    }
+    
+    func formatNumber(_ num: Int) -> String {
+        if language == "English" || numerals == "Latin" {
+            return "\(num)"
+        } else {
+            return devanagariNumber(num)
+        }
+    }
+    
+    var currentMonthName: String {
+        guard viewMonth >= 1 && viewMonth <= 12 else { return "" }
+        return language == "English"
+            ? Self.nepaliMonths[viewMonth - 1].enName
+            : Self.nepaliMonths[viewMonth - 1].name
+    }
+    
+    var currentMonthNameNepali: String {
+        guard viewMonth >= 1 && viewMonth <= 12 else { return "" }
+        return Self.nepaliMonths[viewMonth - 1].name
+    }
+    
+    var daysInCurrentMonth: Int {
+        guard let month = currentMonth else { return 30 }
+        var count = 0
+        for week in month.weeks {
+            for cell in week {
+                if cell != nil {
+                    count += 1
+                }
+            }
+        }
+        return count > 0 ? count : 32
+    }
+    
+    func jumpToBS(year: Int, month: Int, day: Int? = nil) {
+        viewYear = max(2000, min(2090, year))
+        viewMonth = max(1, min(12, month))
+        refreshMonth()
+        if let d = day {
+            selectDayNumber(d)
+        }
+    }
+    
+    func jumpToAD(year: Int, month: Int, day: Int) {
+        let dateStr = "\(year)-\(String(format: "%02d", month))-\(String(format: "%02d", day))"
+        let res = convertDate(input: dateStr)
+        if res.valid, let y = res.year, let m = res.month, let d = res.day {
+            jumpToBS(year: y, month: m, day: d)
         }
     }
 }

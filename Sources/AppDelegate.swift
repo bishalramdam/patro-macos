@@ -67,6 +67,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     
     @objc private func systemDateChanged() {
         PatroEngine.shared.refreshToday()
+        if PatroEngine.shared.isViewingToday() {
+            PatroEngine.shared.goToToday()
+        }
         updateStatusItemTitle()
     }
     
@@ -105,6 +108,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             popover.performClose(nil)
         } else {
             PatroEngine.shared.refreshToday()
+            if PatroEngine.shared.isViewingToday() {
+                PatroEngine.shared.selectToday()
+            }
             popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
             popover.contentViewController?.view.window?.makeKey()
         }

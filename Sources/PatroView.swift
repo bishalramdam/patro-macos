@@ -111,31 +111,261 @@ struct TabButton: View {
     }
 }
 
+// Dropdown picker kind
+enum ActiveDropdown: Equatable {
+    case year, month, day
+}
+
+struct DropdownItem: Identifiable, Equatable {
+    let id: Int
+    let title: String
+}
+
+// Capsule Toggle for BS / AD with fixed geometry (prevents line-breaks and layout shifts)
+struct ModeCapsuleToggle: View {
+    @Binding var pickerMode: String // "BS" or "AD"
+    var isEnglish: Bool = false
+    var onChange: (() -> Void)? = nil
+    
+    var body: some View {
+        HStack(spacing: 0) {
+            Button(action: {
+                if pickerMode != "BS" {
+                    pickerMode = "BS"
+                    onChange?()
+                }
+            }) {
+                Text(isEnglish ? "BS" : "वि.सं.")
+                    .font(.system(size: 11, weight: pickerMode == "BS" ? .bold : .medium))
+                    .lineLimit(1)
+                    .fixedSize()
+                    .foregroundColor(pickerMode == "BS" ? .white : .secondary)
+                    .frame(width: 42, height: 22)
+                    .background(pickerMode == "BS" ? Color.accentColor : Color.clear)
+                    .cornerRadius(4)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help(isEnglish ? "Bikram Sambat (BS)" : "विक्रम संवत् (BS)")
+            
+            Button(action: {
+                if pickerMode != "AD" {
+                    pickerMode = "AD"
+                    onChange?()
+                }
+            }) {
+                Text(isEnglish ? "AD" : "ई.सं.")
+                    .font(.system(size: 11, weight: pickerMode == "AD" ? .bold : .medium))
+                    .lineLimit(1)
+                    .fixedSize()
+                    .foregroundColor(pickerMode == "AD" ? .white : .secondary)
+                    .frame(width: 42, height: 22)
+                    .background(pickerMode == "AD" ? Color.accentColor : Color.clear)
+                    .cornerRadius(4)
+            }
+            .buttonStyle(PlainButtonStyle())
+            .help(isEnglish ? "Gregorian (AD)" : "इस्वी संवत् (AD)")
+        }
+        .padding(2)
+        .frame(width: 88, height: 26)
+        .background(Color.secondary.opacity(0.12))
+        .cornerRadius(6)
+        .overlay(
+            RoundedRectangle(cornerRadius: 6)
+                .stroke(Color.secondary.opacity(0.12), lineWidth: 0.5)
+        )
+    }
+}
+
+// Scrollable Dropdown Menu (normal web-like scrolling with smooth trackpad / mouse wheel)
+struct ScrollableDropdownMenu: View {
+    let items: [DropdownItem]
+    let selectedId: Int
+    let width: CGFloat
+    var visibleRows: Int = 10
+    let onSelect: (Int) -> Void
+    
+    // Explicit height to fit ~10 rows (approx 236pt)
+    private var menuHeight: CGFloat {
+        let rowHeight: CGFloat = 23
+        let contentHeight = CGFloat(items.count) * rowHeight + 6
+        let maxAllowed = CGFloat(visibleRows) * rowHeight + 6
+        return min(contentHeight, maxAllowed)
+    }
+    
+    var body: some View {
+        ScrollViewReader { proxy in
+            ScrollView(.vertical, showsIndicators: true) {
+                VStack(spacing: 1) {
+                    ForEach(items) { item in
+                        let isSelected = item.id == selectedId
+                        DropdownRow(
+                            title: item.title,
+                            isSelected: isSelected,
+                            onSelect: {
+                                onSelect(item.id)
+                            }
+                        )
+                        .id(item.id)
+                    }
+                }
+                .padding(3)
+            }
+            .frame(width: width, height: menuHeight)
+            .background(
+                RoundedRectangle(cornerRadius: 8)
+                    .fill(Color(NSColor.windowBackgroundColor))
+                    .shadow(color: Color.black.opacity(0.4), radius: 10, x: 0, y: 5)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.25), lineWidth: 0.5)
+            )
+            .onAppear {
+                DispatchQueue.main.async {
+                    proxy.scrollTo(selectedId, anchor: .center)
+                }
+            }
+        }
+    }
+}
+
+// Single item row inside the scrollable dropdown
+struct DropdownRow: View {
+    let title: String
+    let isSelected: Bool
+    let onSelect: () -> Void
+    @State private var isHovered: Bool = false
+    
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: 4) {
+                Text(verbatim: title)
+                    .font(.system(size: 11.5, weight: isSelected ? .bold : .medium))
+                    .lineLimit(1)
+                    .fixedSize()
+                Spacer(minLength: 2)
+                if isSelected {
+                    Image(systemName: "checkmark")
+                        .font(.system(size: 8.5, weight: .bold))
+                }
+            }
+            .frame(height: 22)
+            .padding(.horizontal, 7)
+            .background(
+                isSelected ? Color.accentColor :
+                isHovered ? Color.secondary.opacity(0.12) : Color.clear
+            )
+            .foregroundColor(
+                isSelected ? Color.white : Color.primary
+            )
+            .cornerRadius(4)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(PlainButtonStyle())
+        .onHover { hovering in
+            isHovered = hovering
+        }
+    }
+}
+
 // MARK: - Calendar Tab View
 struct CalendarTabView: View {
     @ObservedObject var engine: PatroEngine
     var onOpenConverter: () -> Void
     @State private var copied: Bool = false
+    @State private var pickerMode: String = "BS" // "BS" or "AD"
+    @State private var activeDropdown: ActiveDropdown? = nil
+    @State private var showDateSelector: Bool = false
+    
+    // BS Years (2090 down to 2000)
+    private var bsYears: [DropdownItem] {
+        stride(from: 2090, through: 2000, by: -1).map {
+            DropdownItem(id: $0, title: engine.formatNumber($0))
+        }
+    }
+    
+    // AD Years (2034 down to 1944)
+    private var adYears: [DropdownItem] {
+        stride(from: 2034, through: 1944, by: -1).map {
+            DropdownItem(id: $0, title: "\($0)")
+        }
+    }
+    
+    // BS Months (1 to 12) - No bracket, clean name according to active language
+    private var bsMonths: [DropdownItem] {
+        PatroEngine.nepaliMonths.map {
+            let mName = (engine.language == "English") ? $0.enName : $0.name
+            return DropdownItem(id: $0.id, title: mName)
+        }
+    }
+    
+    // AD Months (1 to 12)
+    private var adMonths: [DropdownItem] {
+        PatroEngine.gregorianMonths.map {
+            DropdownItem(id: $0.id, title: $0.name)
+        }
+    }
+    
+    // BS Days (1 to daysInCurrentMonth)
+    private var bsDays: [DropdownItem] {
+        let suffix = (engine.language == "English") ? "" : " गते"
+        return (1...max(1, engine.daysInCurrentMonth)).map {
+            DropdownItem(id: $0, title: "\(engine.formatNumber($0))\(suffix)")
+        }
+    }
+    
+    // AD Days (1 to 31)
+    private var adDays: [DropdownItem] {
+        (1...31).map {
+            DropdownItem(id: $0, title: "\($0)")
+        }
+    }
     
     var body: some View {
-        VStack(spacing: 8) {
+        let currentADYear = engine.selectedDay?.gregorian.year ?? (engine.todayInfo?.gregorian.year ?? 2026)
+        let currentADMonth = engine.selectedDay?.gregorian.month ?? (engine.todayInfo?.gregorian.month ?? 11)
+        let currentADDay = engine.selectedDay?.gregorian.day ?? (engine.todayInfo?.gregorian.day ?? 6)
+        
+        VStack(spacing: 6) {
             // Month navigation bar
             HStack(alignment: .center) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(engine.currentMonth?.title ?? "")
-                        .font(.system(size: 18, weight: .bold))
-                        .foregroundColor(.primary)
-                    
-                    Text(engine.currentMonth?.gregorianSpan ?? "")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
+                // Clickable Month & Year Header to toggle Date Selector
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.18)) {
+                        showDateSelector.toggle()
+                        if !showDateSelector {
+                            activeDropdown = nil
+                        }
+                    }
+                }) {
+                    VStack(alignment: .leading, spacing: 2) {
+                        HStack(spacing: 5) {
+                            Text(engine.currentMonth?.title ?? "")
+                                .font(.system(size: 18, weight: .bold))
+                                .foregroundColor(.primary)
+                            
+                            Image(systemName: showDateSelector ? "chevron.up" : "chevron.down")
+                                .font(.system(size: 9.5, weight: .bold))
+                                .foregroundColor(showDateSelector ? Color.accentColor : Color.secondary.opacity(0.75))
+                        }
+                        
+                        Text(engine.currentMonth?.gregorianSpan ?? "")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(.secondary)
+                    }
+                    .contentShape(Rectangle())
                 }
+                .buttonStyle(PlainButtonStyle())
+                .help("मिति छान्ने विकल्प देखाउनुहोस् / लुकाउनुहोस् (Click to jump date)")
                 
                 Spacer()
                 
                 // Navigation buttons
                 HStack(spacing: 4) {
-                    Button(action: { engine.previousYear() }) {
+                    Button(action: {
+                        activeDropdown = nil
+                        engine.previousYear()
+                    }) {
                         Image(systemName: "backward.fill")
                             .font(.system(size: 9))
                             .padding(6)
@@ -145,7 +375,10 @@ struct CalendarTabView: View {
                     .buttonStyle(PlainButtonStyle())
                     .help("अघिल्लो वर्ष (Previous Year)")
                     
-                    Button(action: { engine.previousMonth() }) {
+                    Button(action: {
+                        activeDropdown = nil
+                        engine.previousMonth()
+                    }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 11, weight: .bold))
                             .padding(6)
@@ -155,7 +388,10 @@ struct CalendarTabView: View {
                     .buttonStyle(PlainButtonStyle())
                     .help("अघिल्लो महिना (Previous Month)")
                     
-                    Button(action: { engine.goToToday() }) {
+                    Button(action: {
+                        activeDropdown = nil
+                        engine.goToToday()
+                    }) {
                         Text("आज")
                             .font(.system(size: 11, weight: .semibold))
                             .padding(.horizontal, 8)
@@ -167,7 +403,10 @@ struct CalendarTabView: View {
                     .buttonStyle(PlainButtonStyle())
                     .help("आजको मितिमा जानुहोस् (Today)")
                     
-                    Button(action: { engine.nextMonth() }) {
+                    Button(action: {
+                        activeDropdown = nil
+                        engine.nextMonth()
+                    }) {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 11, weight: .bold))
                             .padding(6)
@@ -177,7 +416,10 @@ struct CalendarTabView: View {
                     .buttonStyle(PlainButtonStyle())
                     .help("पछिल्लो महिना (Next Month)")
                     
-                    Button(action: { engine.nextYear() }) {
+                    Button(action: {
+                        activeDropdown = nil
+                        engine.nextYear()
+                    }) {
                         Image(systemName: "forward.fill")
                             .font(.system(size: 9))
                             .padding(6)
@@ -190,6 +432,185 @@ struct CalendarTabView: View {
             }
             .padding(.horizontal, 14)
             .padding(.top, 8)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if activeDropdown != nil {
+                    withAnimation(.easeInOut(duration: 0.1)) { activeDropdown = nil }
+                }
+            }
+            
+            // Direct Date Selector Bar (Select Year, Month, Day directly)
+            // Hidden by default; toggled when the bold month/year title is clicked
+            if showDateSelector {
+                HStack(spacing: 6) {
+                // Mode Toggle: [ वि.सं. | ई.सं. ] (or [ BS | AD ]) (fixed 88pt)
+                ModeCapsuleToggle(pickerMode: $pickerMode, isEnglish: engine.language == "English") {
+                    activeDropdown = nil
+                }
+                
+                // Year Button (fixed 70pt) - Dropdown opens directly below Year button
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        activeDropdown = (activeDropdown == .year) ? nil : .year
+                    }
+                }) {
+                    HStack(spacing: 3) {
+                        let yearText = pickerMode == "BS"
+                            ? engine.formatNumber(engine.viewYear)
+                            : "\(currentADYear)"
+                        Text(verbatim: yearText)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                            .fixedSize()
+                            .foregroundColor(.primary)
+                        Image(systemName: activeDropdown == .year ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 7.5, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(width: 70, height: 26)
+                    .background(Color.secondary.opacity(activeDropdown == .year ? 0.22 : 0.12))
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.secondary.opacity(0.15), lineWidth: 0.5)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help(pickerMode == "BS" ? "वर्ष छान्नुहोस्" : "Select Year")
+                .overlay(alignment: .topLeading) {
+                    if activeDropdown == .year {
+                        let dWidth: CGFloat = 80
+                        ScrollableDropdownMenu(
+                            items: pickerMode == "BS" ? bsYears : adYears,
+                            selectedId: pickerMode == "BS" ? engine.viewYear : currentADYear,
+                            width: dWidth,
+                            visibleRows: 10,
+                            onSelect: { selectedId in
+                                if pickerMode == "BS" {
+                                    engine.jumpToBS(year: selectedId, month: engine.viewMonth, day: engine.selectedDay?.day)
+                                } else {
+                                    engine.jumpToAD(year: selectedId, month: currentADMonth, day: currentADDay)
+                                }
+                                withAnimation(.easeInOut(duration: 0.1)) {
+                                    activeDropdown = nil
+                                }
+                            }
+                        )
+                        .offset(y: 30)
+                    }
+                }
+                
+                // Month Button (fixed 86pt) - Dropdown opens directly below Month button
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        activeDropdown = (activeDropdown == .month) ? nil : .month
+                    }
+                }) {
+                    HStack(spacing: 3) {
+                        let monthText = pickerMode == "BS"
+                            ? engine.currentMonthName
+                            : ((currentADMonth >= 1 && currentADMonth <= 12) ? PatroEngine.gregorianMonths[currentADMonth - 1].shortName : "Nov")
+                        Text(verbatim: monthText)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                            .fixedSize()
+                            .foregroundColor(.primary)
+                        Image(systemName: activeDropdown == .month ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 7.5, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(width: 86, height: 26)
+                    .background(Color.secondary.opacity(activeDropdown == .month ? 0.22 : 0.12))
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.secondary.opacity(0.15), lineWidth: 0.5)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help(pickerMode == "BS" ? "महिना छान्नुहोस्" : "Select Month")
+                .overlay(alignment: .top) {
+                    if activeDropdown == .month {
+                        let dWidth: CGFloat = pickerMode == "BS" ? 120 : 106
+                        ScrollableDropdownMenu(
+                            items: pickerMode == "BS" ? bsMonths : adMonths,
+                            selectedId: pickerMode == "BS" ? engine.viewMonth : currentADMonth,
+                            width: dWidth,
+                            visibleRows: 10,
+                            onSelect: { selectedId in
+                                if pickerMode == "BS" {
+                                    engine.jumpToBS(year: engine.viewYear, month: selectedId, day: engine.selectedDay?.day)
+                                } else {
+                                    engine.jumpToAD(year: currentADYear, month: selectedId, day: currentADDay)
+                                }
+                                withAnimation(.easeInOut(duration: 0.1)) {
+                                    activeDropdown = nil
+                                }
+                            }
+                        )
+                        .offset(y: 30)
+                    }
+                }
+                
+                // Day Button (fixed 64pt) - Dropdown opens directly below Day button
+                Button(action: {
+                    withAnimation(.easeInOut(duration: 0.1)) {
+                        activeDropdown = (activeDropdown == .day) ? nil : .day
+                    }
+                }) {
+                    HStack(spacing: 3) {
+                        let daySuffix = (pickerMode == "BS" && engine.language != "English") ? " गते" : ""
+                        let dayVal = engine.selectedDay?.day ?? 1
+                        let dayText = pickerMode == "BS"
+                            ? "\(engine.formatNumber(dayVal))\(daySuffix)"
+                            : "\(currentADDay)"
+                        Text(verbatim: dayText)
+                            .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
+                            .fixedSize()
+                            .foregroundColor(.primary)
+                        Image(systemName: activeDropdown == .day ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 7.5, weight: .bold))
+                            .foregroundColor(.secondary)
+                    }
+                    .frame(width: 64, height: 26)
+                    .background(Color.secondary.opacity(activeDropdown == .day ? 0.22 : 0.12))
+                    .cornerRadius(6)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(Color.secondary.opacity(0.15), lineWidth: 0.5)
+                    )
+                }
+                .buttonStyle(PlainButtonStyle())
+                .help(pickerMode == "BS" ? "गते छान्नुहोस्" : "Select Day")
+                .overlay(alignment: .topTrailing) {
+                    if activeDropdown == .day {
+                        let dWidth: CGFloat = pickerMode == "BS" ? 82 : 68
+                        ScrollableDropdownMenu(
+                            items: pickerMode == "BS" ? bsDays : adDays,
+                            selectedId: pickerMode == "BS" ? (engine.selectedDay?.day ?? 1) : currentADDay,
+                            width: dWidth,
+                            visibleRows: 10,
+                            onSelect: { selectedId in
+                                if pickerMode == "BS" {
+                                    engine.selectDayNumber(selectedId)
+                                } else {
+                                    engine.jumpToAD(year: currentADYear, month: currentADMonth, day: selectedId)
+                                }
+                                withAnimation(.easeInOut(duration: 0.1)) {
+                                    activeDropdown = nil
+                                }
+                            }
+                        )
+                        .offset(y: 30)
+                    }
+                }
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 3)
+                .zIndex(100) // Ensure dropdown overlays always float above calendar grid
+                .transition(.move(edge: .top).combined(with: .opacity))
+            }
             
             // Weekday Header (आइत, सोम, मङ्गल ...)
             if let month = engine.currentMonth {
@@ -203,6 +624,12 @@ struct CalendarTabView: View {
                 }
                 .padding(.horizontal, 10)
                 .padding(.top, 4)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if activeDropdown != nil {
+                        withAnimation(.easeInOut(duration: 0.1)) { activeDropdown = nil }
+                    }
+                }
                 
                 // Clean Calendar Days Grid
                 VStack(spacing: 3) {
@@ -214,10 +641,11 @@ struct CalendarTabView: View {
                                     DayCellView(
                                         cell: cell,
                                         isToday: isTodayCell(cell),
-                                        isSelected: engine.selectedDay?.day == cell.day,
+                                        isSelected: (engine.selectedDay?.year == cell.year && engine.selectedDay?.month == cell.month && engine.selectedDay?.day == cell.day),
                                         showGregorian: engine.showGregorianInGrid
                                     )
                                     .onTapGesture {
+                                        activeDropdown = nil
                                         engine.selectedDay = cell
                                     }
                                 } else {
@@ -231,6 +659,12 @@ struct CalendarTabView: View {
                     }
                 }
                 .padding(.horizontal, 10)
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    if activeDropdown != nil {
+                        withAnimation(.easeInOut(duration: 0.1)) { activeDropdown = nil }
+                    }
+                }
             }
             
             Divider()
@@ -265,7 +699,9 @@ struct CalendarTabView: View {
                         .font(.system(size: 13, weight: .bold))
                         .foregroundColor(.primary)
                     
-                    Text("\(gregDay) \(gName) \(gregYear) AD (\(activeWeekday))")
+                    let adYearText = String(format: "%d", gregYear)
+                    let fullADText = "\(gregDay) \(gName) \(adYearText) AD (\(activeWeekday))"
+                    Text(verbatim: fullADText)
                         .font(.system(size: 11, weight: .regular))
                         .foregroundColor(.secondary)
                     
@@ -307,6 +743,24 @@ struct CalendarTabView: View {
             }
             .padding(.horizontal, 14)
             .padding(.bottom, 10)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                if activeDropdown != nil {
+                    withAnimation(.easeInOut(duration: 0.1)) { activeDropdown = nil }
+                }
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            if activeDropdown != nil {
+                withAnimation(.easeInOut(duration: 0.1)) { activeDropdown = nil }
+            }
+        }
+        .onAppear {
+            engine.refreshToday()
+            if engine.isViewingToday() {
+                engine.selectToday()
+            }
         }
     }
     
@@ -318,7 +772,8 @@ struct CalendarTabView: View {
     private func copyDateInfo(dayText: String, weekday: String, gregDay: Int, gregMonth: Int, gregYear: Int, observance: String) {
         let gMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
         let gName = gMonthNames[max(0, min(11, gregMonth - 1))]
-        var text = "\(dayText) \(engine.currentMonth?.title ?? ""), \(weekday) (\(gregDay) \(gName) \(gregYear))"
+        let adYearText = String(format: "%d", gregYear)
+        var text = "\(dayText) \(engine.currentMonth?.title ?? ""), \(weekday) (\(gregDay) \(gName) \(adYearText) AD)"
         if !observance.isEmpty {
             text += " - \(observance)"
         }
@@ -352,26 +807,35 @@ struct DayCellView: View {
             // Bikram Day number
             Text(cell.dayText)
                 .font(.system(size: 13, weight: isSelected || isToday ? .bold : .medium))
-                .foregroundColor(cell.isSaturday || cell.isHoliday ? Color.red : Color.primary)
+                .foregroundColor(
+                    isToday ? Color.white :
+                    (cell.isSaturday || cell.isHoliday) ? Color.red : Color.primary
+                )
             
             // Clean Gregorian day number
             if showGregorian {
                 Text(cell.gregorianDayText)
                     .font(.system(size: 9, weight: .regular))
-                    .foregroundColor(Color.secondary.opacity(0.75))
+                    .foregroundColor(
+                        isToday ? Color.white.opacity(0.85) : Color.secondary.opacity(0.75)
+                    )
             }
         }
         .frame(maxWidth: .infinity, minHeight: showGregorian ? 36 : 28)
         .background(
             RoundedRectangle(cornerRadius: 6)
-                .fill(isSelected ? Color.accentColor.opacity(0.2) :
-                      isToday ? Color.accentColor.opacity(0.12) :
-                      isHovered ? Color.secondary.opacity(0.08) : Color.clear)
+                .fill(
+                    isToday ? Color.accentColor :
+                    isSelected ? Color.accentColor.opacity(0.18) :
+                    isHovered ? Color.secondary.opacity(0.1) : Color.clear
+                )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)
-                .stroke(isSelected ? Color.accentColor :
-                        isToday ? Color.accentColor.opacity(0.6) : Color.clear, lineWidth: 1.5)
+                .stroke(
+                    (!isToday && isSelected) ? Color.accentColor : Color.clear,
+                    lineWidth: 1.5
+                )
         )
         .onHover { hovering in
             isHovered = hovering
