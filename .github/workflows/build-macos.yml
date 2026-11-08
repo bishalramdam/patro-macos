@@ -1,0 +1,66 @@
+name: Build macOS App
+
+on:
+  push:
+    branches: [ main ]
+    tags:
+      - 'v*'
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Release macOS App
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Verify Xcode & Swift
+        run: |
+          xcodebuild -version
+          swift --version
+
+      - name: Build Universal App Bundle & Zip
+        run: |
+          chmod +x build.sh
+          ./build.sh
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Patro-macOS
+          path: build/Patro-macOS.zip
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Create GitHub Release and Upload App
+        if: startsWith(github.ref, 'refs/tags/v') || github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'Latest macOS Build' }}
+          tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'latest' }}
+          draft: false
+          prerelease: false
+          files: build/Patro-macOS.zip
+          body: |
+            ### 🇳🇵 Patro (पात्रो) for macOS
+
+            **Release Information**:
+            - **Commit**: `${{ github.sha }}`
+            - **Binary**: Universal (Apple Silicon arm64 + Intel x86_64)
+            - **Compatibility**: macOS 12.0 (Monterey) and newer
+            - **Architecture**: 100% Native AppKit & SwiftUI, Zero Electron, Zero Trackers
+            - **Features**: Native Bikram Sambat menu bar calendar, direct date selector, BS ↔ AD converter, clean language toggle.
+
+            **Installation**:
+            1. Download `Patro-macOS.zip`.
+            2. Unzip and drag `Patro.app` to your `/Applications` folder.
+            3. Open Patro — the Nepali date will appear cleanly in your menu bar!
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

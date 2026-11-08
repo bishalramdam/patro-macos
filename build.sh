@@ -33,16 +33,19 @@ SOURCES=(
     "$DIR/Sources/main.swift"
 )
 
-echo "📦 Compiling Swift sources..."
-swiftc -O \
-    -module-cache-path /tmp/clang-cache \
-    -target arm64-apple-macosx12.0 \
-    "${SOURCES[@]}" \
-    -o "$MACOS/$APP_NAME"
+echo "📦 Compiling Swift sources (Universal Binary: arm64 + x86_64)..."
+swiftc -O -module-cache-path /tmp/clang-cache -target arm64-apple-macosx12.0 "${SOURCES[@]}" -o "$BUILD_DIR/patro_arm64"
+swiftc -O -module-cache-path /tmp/clang-cache -target x86_64-apple-macosx12.0 "${SOURCES[@]}" -o "$BUILD_DIR/patro_x86_64"
+lipo -create -output "$MACOS/$APP_NAME" "$BUILD_DIR/patro_arm64" "$BUILD_DIR/patro_x86_64"
+rm -f "$BUILD_DIR/patro_arm64" "$BUILD_DIR/patro_x86_64"
 
 echo "🔏 Ad-hoc code signing..."
 codesign --force --deep --sign - "$APP_BUNDLE"
 
+echo "📦 Creating ZIP archive..."
+(cd "$BUILD_DIR" && zip -q -r -y "$APP_NAME-macOS.zip" "$APP_NAME.app")
+
 echo "✅ Build complete: $APP_BUNDLE"
+echo "✅ Archive: $BUILD_DIR/$APP_NAME-macOS.zip"
 echo "To run Patro:"
 echo "  open \"$APP_BUNDLE\""
