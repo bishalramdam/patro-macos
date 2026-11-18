@@ -758,8 +758,8 @@ struct CalendarTabView: View {
         }
         .onAppear {
             engine.refreshToday()
-            if engine.isViewingToday() {
-                engine.selectToday()
+            if engine.isTrackingToday || engine.isViewingToday() {
+                engine.goToToday()
             }
         }
     }

@@ -110,6 +110,7 @@ class PatroEngine: ObservableObject {
     @Published var viewYear: Int = 2083
     @Published var viewMonth: Int = 7
     @Published var selectedDay: DayCellData?
+    @Published var isTrackingToday: Bool = true
     
     // User preferences:
     @Published var barFormat: String = "Year" {
@@ -207,16 +208,23 @@ class PatroEngine: ObservableObject {
     
     func refreshToday() {
         let previousDay = todayInfo?.day
+        let previousMonth = todayInfo?.month
+        let previousYear = todayInfo?.year
         executeRefreshToday()
-        if let today = todayInfo {
-            // If day changed (e.g. midnight passed or computer woke up)
-            if previousDay != nil && previousDay != today.day {
-                if isViewingToday() {
-                    viewYear = today.year
-                    viewMonth = today.month
-                    executeRefreshMonth()
-                    selectToday()
-                }
+        guard let today = todayInfo else { return }
+        
+        let dateChanged = (previousDay != nil && previousDay != today.day) ||
+                          (previousMonth != nil && previousMonth != today.month) ||
+                          (previousYear != nil && previousYear != today.year)
+        
+        if dateChanged {
+            let wasViewingOldToday = (previousYear != nil && previousMonth != nil && viewYear == previousYear && viewMonth == previousMonth)
+            if isTrackingToday || wasViewingOldToday {
+                isTrackingToday = true
+                viewYear = today.year
+                viewMonth = today.month
+                executeRefreshMonth()
+                selectToday()
             }
         }
     }
@@ -253,6 +261,7 @@ class PatroEngine: ObservableObject {
     }
     
     func goToToday() {
+        isTrackingToday = true
         executeRefreshToday()
         if let today = todayInfo {
             viewYear = today.year
@@ -292,6 +301,7 @@ class PatroEngine: ObservableObject {
            let y = next["year"], let m = next["month"] {
             viewYear = y
             viewMonth = m
+            isTrackingToday = isViewingToday()
             refreshMonth()
         }
     }
@@ -304,6 +314,7 @@ class PatroEngine: ObservableObject {
            let y = next["year"], let m = next["month"] {
             viewYear = y
             viewMonth = m
+            isTrackingToday = isViewingToday()
             refreshMonth()
         }
     }
@@ -316,6 +327,7 @@ class PatroEngine: ObservableObject {
            let y = next["year"], let m = next["month"] {
             viewYear = y
             viewMonth = m
+            isTrackingToday = isViewingToday()
             refreshMonth()
         }
     }
@@ -328,6 +340,7 @@ class PatroEngine: ObservableObject {
            let y = next["year"], let m = next["month"] {
             viewYear = y
             viewMonth = m
+            isTrackingToday = isViewingToday()
             refreshMonth()
         }
     }
@@ -439,6 +452,7 @@ class PatroEngine: ObservableObject {
     func jumpToBS(year: Int, month: Int, day: Int? = nil) {
         viewYear = max(2000, min(2090, year))
         viewMonth = max(1, min(12, month))
+        isTrackingToday = isViewingToday()
         refreshMonth()
         if let d = day {
             selectDayNumber(d)
