@@ -700,8 +700,9 @@ struct CalendarTabView: View {
                     }
                 }
                 
-                // Clean Calendar Days Grid (uniform fixed row height so row 1 & last row never stretch)
+                // Clean Calendar Days Grid (always reserve 6 rows so navigating months never resizes the popover)
                 let cellHeight: CGFloat = engine.showGregorianInGrid ? 36 : 28
+                let gridHeight: CGFloat = 6 * cellHeight + 5 * 3
                 VStack(spacing: 3) {
                     ForEach(0..<month.weeks.count, id: \.self) { weekIndex in
                         let week = month.weeks[weekIndex]
@@ -729,6 +730,7 @@ struct CalendarTabView: View {
                         .frame(height: cellHeight)
                     }
                 }
+                .frame(height: gridHeight, alignment: .top)
                 .padding(.horizontal, 10)
                 .contentShape(Rectangle())
                 .onTapGesture {
