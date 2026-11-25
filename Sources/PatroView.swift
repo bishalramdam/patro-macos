@@ -11,36 +11,53 @@ enum PatroThemeColor: String, CaseIterable, Identifiable {
     
     var id: String { rawValue }
     
-    static func resolve(_ name: String) -> Color {
-        switch name {
-        case "Green": return .green
-        case "Teal": return .teal
-        case "Purple": return .purple
-        case "Orange": return .orange
-        case "Red": return .red
-        default: return .accentColor
+    static func from(_ name: String) -> PatroThemeColor {
+        PatroThemeColor(rawValue: name) ?? .blue
+    }
+    
+    /// Deep, rich saturated color for filled pills/badges so white text stays high-contrast.
+    var fillColor: Color {
+        switch self {
+        case .blue: return Color(red: 0.08, green: 0.39, blue: 0.78)
+        case .green: return Color(red: 0.10, green: 0.47, blue: 0.24)
+        case .teal: return Color(red: 0.05, green: 0.43, blue: 0.46)
+        case .purple: return Color(red: 0.41, green: 0.22, blue: 0.74)
+        case .orange: return Color(red: 0.74, green: 0.32, blue: 0.04)
+        case .red: return Color(red: 0.72, green: 0.14, blue: 0.16)
         }
     }
     
-    var swatchColor: Color {
-        switch self {
-        case .blue: return .blue
-        case .green: return .green
-        case .teal: return .teal
-        case .purple: return .purple
-        case .orange: return .orange
-        case .red: return .red
+    /// Adaptive foreground accent color for text, icons, and outlines across Light & Dark Mode.
+    func inkColor(for scheme: ColorScheme) -> Color {
+        switch (self, scheme) {
+        case (.blue, .dark): return Color(red: 0.38, green: 0.68, blue: 1.0)
+        case (.blue, _): return Color(red: 0.06, green: 0.34, blue: 0.72)
+        case (.green, .dark): return Color(red: 0.30, green: 0.80, blue: 0.48)
+        case (.green, _): return Color(red: 0.08, green: 0.42, blue: 0.20)
+        case (.teal, .dark): return Color(red: 0.26, green: 0.78, blue: 0.82)
+        case (.teal, _): return Color(red: 0.04, green: 0.38, blue: 0.41)
+        case (.purple, .dark): return Color(red: 0.70, green: 0.56, blue: 0.98)
+        case (.purple, _): return Color(red: 0.36, green: 0.18, blue: 0.68)
+        case (.orange, .dark): return Color(red: 0.98, green: 0.58, blue: 0.24)
+        case (.orange, _): return Color(red: 0.68, green: 0.28, blue: 0.02)
+        case (.red, .dark): return Color(red: 0.98, green: 0.42, blue: 0.42)
+        case (.red, _): return Color(red: 0.66, green: 0.11, blue: 0.13)
         }
     }
+    
+    var swatchColor: Color { fillColor }
 }
 
 struct PatroView: View {
     @ObservedObject var engine = PatroEngine.shared
+    @Environment(\.colorScheme) private var colorScheme
     @State private var selectedTab: Int = 0 // 0: Calendar, 1: Settings
     
     var body: some View {
         let isEnglish = engine.language == "English"
-        let themeColor = PatroThemeColor.resolve(engine.accentColorName)
+        let theme = PatroThemeColor.from(engine.accentColorName)
+        let themeColor = theme.fillColor
+        let inkColor = theme.inkColor(for: colorScheme)
         
         VStack(spacing: 0) {
             // Top Tab Header
@@ -49,7 +66,8 @@ struct PatroView: View {
                     title: isEnglish ? "Calendar" : "क्यालेन्डर",
                     icon: "calendar",
                     isSelected: selectedTab == 0,
-                    themeColor: themeColor
+                    themeColor: themeColor,
+                    inkColor: inkColor
                 ) {
                     selectedTab = 0
                 }
@@ -57,7 +75,8 @@ struct PatroView: View {
                     title: isEnglish ? "Settings" : "सेटिङ",
                     icon: "gearshape",
                     isSelected: selectedTab == 1,
-                    themeColor: themeColor
+                    themeColor: themeColor,
+                    inkColor: inkColor
                 ) {
                     selectedTab = 1
                 }
@@ -90,9 +109,9 @@ struct PatroView: View {
             // Content Body based on selected Tab
             Group {
                 if selectedTab == 0 {
-                    CalendarTabView(engine: engine, themeColor: themeColor)
+                    CalendarTabView(engine: engine, themeColor: themeColor, inkColor: inkColor)
                 } else {
-                    SettingsTabView(engine: engine, themeColor: themeColor)
+                    SettingsTabView(engine: engine, themeColor: themeColor, inkColor: inkColor)
                 }
             }
             .frame(width: 350)
@@ -127,6 +146,7 @@ struct TabButton: View {
     let icon: String
     let isSelected: Bool
     let themeColor: Color
+    let inkColor: Color
     let action: () -> Void
     
     @State private var isHovered: Bool = false
@@ -148,7 +168,7 @@ struct TabButton: View {
                         isHovered ? Color.secondary.opacity(0.12) : Color.clear
                     )
             )
-            .foregroundColor(isSelected ? themeColor : .primary.opacity(0.85))
+            .foregroundColor(isSelected ? inkColor : .primary.opacity(0.85))
             .contentShape(RoundedRectangle(cornerRadius: 7))
         }
         .buttonStyle(PlainButtonStyle())
@@ -326,6 +346,7 @@ struct DropdownRow: View {
 struct CalendarTabView: View {
     @ObservedObject var engine: PatroEngine
     var themeColor: Color = .accentColor
+    var inkColor: Color = .accentColor
     @State private var copied: Bool = false
     @State private var pickerMode: String = "BS" // "BS" or "AD"
     @State private var activeDropdown: ActiveDropdown? = nil
@@ -403,7 +424,7 @@ struct CalendarTabView: View {
                             
                             Image(systemName: showDateSelector ? "chevron.up" : "chevron.down")
                                 .font(.system(size: 9.5, weight: .bold))
-                                .foregroundColor(showDateSelector ? themeColor : Color.secondary.opacity(0.75))
+                                .foregroundColor(showDateSelector ? inkColor : Color.secondary.opacity(0.75))
                         }
                         
                         Text(engine.currentMonth?.gregorianSpan ?? "")
@@ -714,7 +735,8 @@ struct CalendarTabView: View {
                                         isToday: isTodayCell(cell),
                                         isSelected: (engine.selectedDay?.year == cell.year && engine.selectedDay?.month == cell.month && engine.selectedDay?.day == cell.day),
                                         showGregorian: engine.showGregorianInGrid,
-                                        themeColor: themeColor
+                                        themeColor: themeColor,
+                                        inkColor: inkColor
                                     )
                                     .onTapGesture {
                                         activeDropdown = nil
@@ -761,7 +783,7 @@ struct CalendarTabView: View {
                     Text(activeDay)
                         .font(.system(size: 24, weight: .bold))
                         .frame(height: 28)
-                        .foregroundColor(isSatOrHol ? Color.red : themeColor)
+                        .foregroundColor(isSatOrHol ? Color.red : inkColor)
                     Text(activeWeekday)
                         .font(.system(size: 10, weight: .medium))
                         .lineLimit(1)
@@ -880,6 +902,7 @@ struct DayCellView: View {
     let isSelected: Bool
     let showGregorian: Bool
     var themeColor: Color = .accentColor
+    var inkColor: Color = .accentColor
     
     @State private var isHovered: Bool = false
     
@@ -916,7 +939,7 @@ struct DayCellView: View {
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(
-                    (!isToday && isSelected) ? themeColor : Color.clear,
+                    (!isToday && isSelected) ? inkColor : Color.clear,
                     lineWidth: 1.5
                 )
         )
@@ -931,6 +954,7 @@ struct DayCellView: View {
 struct SettingsTabView: View {
     @ObservedObject var engine: PatroEngine
     var themeColor: Color = .accentColor
+    var inkColor: Color = .accentColor
     
     var body: some View {
         let isEnglish = engine.language == "English"
@@ -1040,7 +1064,7 @@ struct SettingsTabView: View {
                 Divider()
                 
                 // Auto-Update & GitHub Sync Section
-                CalendarSyncSection(isEnglish: isEnglish, themeColor: themeColor)
+                CalendarSyncSection(isEnglish: isEnglish, themeColor: themeColor, inkColor: inkColor)
                 
                 Divider()
                 
@@ -1066,6 +1090,7 @@ struct CalendarSyncSection: View {
     @ObservedObject var updater = PatroUpdateManager.shared
     var isEnglish: Bool
     var themeColor: Color = .accentColor
+    var inkColor: Color = .accentColor
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
@@ -1079,10 +1104,10 @@ struct CalendarSyncSection: View {
                 
                 Text(isEnglish ? "Verified: \(updater.publishedThrough)" : "प्रमाणित: \(updater.publishedThrough)")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(themeColor)
+                    .foregroundColor(inkColor)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(themeColor.opacity(0.12))
+                    .background(themeColor.opacity(0.16))
                     .cornerRadius(4)
             }
             .frame(height: 18)
@@ -1113,8 +1138,8 @@ struct CalendarSyncSection: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
-                    .background(themeColor.opacity(0.15))
-                    .foregroundColor(themeColor)
+                    .background(themeColor.opacity(0.18))
+                    .foregroundColor(inkColor)
                     .cornerRadius(6)
                     .contentShape(Rectangle())
                 }
