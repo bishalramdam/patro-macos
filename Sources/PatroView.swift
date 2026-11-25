@@ -95,10 +95,10 @@ struct PatroView: View {
                     SettingsTabView(engine: engine, themeColor: themeColor)
                 }
             }
-            .frame(width: 350)
+            .frame(width: 350, height: 425, alignment: .top)
         }
         .background(VisualEffectView(material: .popover, blendingMode: .behindWindow))
-        .frame(width: 350)
+        .frame(width: 350, height: 474, alignment: .top)
     }
 }
 
@@ -685,12 +685,14 @@ struct CalendarTabView: View {
                     ForEach(month.weekdays) { wd in
                         Text(wd.name)
                             .font(.system(size: 11, weight: .semibold))
+                            .lineLimit(1)
                             .foregroundColor(wd.isSaturday ? Color.red.opacity(0.9) : Color.secondary)
                             .frame(maxWidth: .infinity)
                     }
                 }
+                .frame(height: 16)
                 .padding(.horizontal, 10)
-                .padding(.top, 4)
+                .padding(.top, 2)
                 .contentShape(Rectangle())
                 .onTapGesture {
                     if activeDropdown != nil {
@@ -737,7 +739,7 @@ struct CalendarTabView: View {
             }
             
             Divider()
-                .padding(.vertical, 4)
+                .padding(.vertical, 3)
             
             // Clean Selected Day Details Card
             let currentDay = engine.selectedDay
@@ -756,13 +758,15 @@ struct CalendarTabView: View {
                 VStack(spacing: 1) {
                     Text(activeDay)
                         .font(.system(size: 24, weight: .bold))
+                        .frame(height: 28)
                         .foregroundColor(isSatOrHol ? Color.red : themeColor)
                     Text(activeWeekday)
                         .font(.system(size: 10, weight: .medium))
                         .lineLimit(1)
+                        .frame(height: 14)
                         .foregroundColor(.secondary)
                 }
-                .frame(width: 54)
+                .frame(width: 58)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(activeDay) \(engine.currentMonth?.title ?? "")")
@@ -814,15 +818,17 @@ struct CalendarTabView: View {
                 .buttonStyle(PlainButtonStyle())
                 .help(isEnglish ? "Copy date to clipboard" : "मिति क्लिपबोर्डमा कपी गर्नुहोस्")
             }
-            .frame(height: 52)
+            .frame(height: 50)
             .padding(.horizontal, 14)
-            .padding(.bottom, 10)
+            .padding(.bottom, 8)
             .contentShape(Rectangle())
             .onTapGesture {
                 if activeDropdown != nil {
                     withAnimation(.easeInOut(duration: 0.1)) { activeDropdown = nil }
                 }
             }
+            
+            Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
         .onTapGesture {
@@ -929,123 +935,129 @@ struct SettingsTabView: View {
     var body: some View {
         let isEnglish = engine.language == "English"
         
-        VStack(alignment: .leading, spacing: 11) {
-            Text(isEnglish ? "Settings & Preferences" : "सेटिङ तथा प्राथमिकताहरू")
-                .font(.system(size: 14, weight: .bold))
-                .frame(height: 18, alignment: .leading)
-                .padding(.top, 10)
-            
-            // Menu bar label format
-            VStack(alignment: .leading, spacing: 4) {
-                Text(isEnglish ? "Menu Bar Format:" : "मेनु बार फर्म्याट (Menu Bar Format):")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(height: 14, alignment: .leading)
+        ScrollView(.vertical, showsIndicators: false) {
+            VStack(alignment: .leading, spacing: 10) {
+                Text(isEnglish ? "Settings & Preferences" : "सेटिङ तथा प्राथमिकताहरू")
+                    .font(.system(size: 14, weight: .bold))
+                    .frame(height: 18, alignment: .leading)
+                    .padding(.top, 10)
                 
-                Picker("", selection: $engine.barFormat) {
-                    Text(isEnglish ? "With Year (17 Kartik 2083)" : "वर्षसहित (१७ कात्तिक २०८३)").tag("Year")
-                    Text(isEnglish ? "Full (Tuesday, 17 Kartik 2083)" : "विस्तृत (मङ्गलबार, १७ कात्तिक २०८३)").tag("Full")
-                    Text(isEnglish ? "With Gregorian (17 Kartik 2083, 3 Nov)" : "अंग्रेजी मितिसहित (१७ कात्तिक २०८३, 3 Nov)").tag("WithGregorian")
-                    Text(isEnglish ? "Numeric Only (2083-07-17)" : "अङ्क मात्र (२०८३-०७-१७)").tag("Numeric")
-                }
-                .pickerStyle(MenuPickerStyle())
-                .frame(height: 22)
-            }
-            
-            // Numerals Style
-            VStack(alignment: .leading, spacing: 4) {
-                Text(isEnglish ? "Numerals:" : "अङ्कको लिपि (Numerals):")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(height: 14, alignment: .leading)
-                
-                Picker("", selection: $engine.numerals) {
-                    Text(isEnglish ? "Devanagari (०१२३४५६७८९)" : "देवनागरी (०१२३४५६७८९)").tag("Devanagari")
-                    Text(isEnglish ? "Latin (0123456789)" : "ल्याटिन (0123456789)").tag("Latin")
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .frame(height: 22)
-            }
-            
-            // Language
-            VStack(alignment: .leading, spacing: 4) {
-                Text(isEnglish ? "Language:" : "भाषा (Language):")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(height: 14, alignment: .leading)
-                
-                Picker("", selection: $engine.language) {
-                    Text("नेपाली (Nepali)").tag("Nepali")
-                    Text("English").tag("English")
-                }
-                .pickerStyle(SegmentedPickerStyle())
-                .frame(height: 22)
-            }
-            
-            // Theme Color
-            VStack(alignment: .leading, spacing: 5) {
-                Text(isEnglish ? "Theme Color:" : "रङ्ग (Theme Color):")
-                    .font(.system(size: 11, weight: .semibold))
-                    .foregroundColor(.secondary)
-                    .frame(height: 14, alignment: .leading)
-                
-                HStack(spacing: 10) {
-                    ForEach(PatroThemeColor.allCases) { option in
-                        let isSelected = engine.accentColorName == option.rawValue
-                        Button(action: {
-                            engine.accentColorName = option.rawValue
-                        }) {
-                            ZStack {
-                                Circle()
-                                    .fill(option.swatchColor)
-                                    .frame(width: 20, height: 20)
-                                if isSelected {
-                                    Circle()
-                                        .stroke(Color.primary, lineWidth: 1.8)
-                                        .frame(width: 25, height: 25)
-                                    Image(systemName: "checkmark")
-                                        .font(.system(size: 9, weight: .bold))
-                                        .foregroundColor(.white)
-                                }
-                            }
-                            .frame(width: 26, height: 26)
-                            .contentShape(Circle())
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .help(option.rawValue)
+                // Menu bar label format
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isEnglish ? "Menu Bar Format:" : "मेनु बार फर्म्याट (Menu Bar Format):")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .frame(height: 14, alignment: .leading)
+                    
+                    Picker("", selection: $engine.barFormat) {
+                        Text(isEnglish ? "With Year (17 Kartik 2083)" : "वर्षसहित (१७ कात्तिक २०८३)").tag("Year")
+                        Text(isEnglish ? "Full (Tuesday, 17 Kartik 2083)" : "विस्तृत (मङ्गलबार, १७ कात्तिक २०८३)").tag("Full")
+                        Text(isEnglish ? "With Gregorian (17 Kartik 2083, 3 Nov)" : "अंग्रेजी मितिसहित (१७ कात्तिक २०८३, 3 Nov)").tag("WithGregorian")
+                        Text(isEnglish ? "Numeric Only (2083-07-17)" : "अङ्क मात्र (२०८३-०७-१७)").tag("Numeric")
                     }
-                    Spacer()
+                    .labelsHidden()
+                    .pickerStyle(MenuPickerStyle())
+                    .frame(width: 322, height: 22, alignment: .leading)
                 }
+                
+                // Numerals Style
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isEnglish ? "Numerals:" : "अङ्कको लिपि (Numerals):")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .frame(height: 14, alignment: .leading)
+                    
+                    Picker("", selection: $engine.numerals) {
+                        Text(isEnglish ? "Devanagari (०–९)" : "देवनागरी (०–९)").tag("Devanagari")
+                        Text(isEnglish ? "Latin (0–9)" : "ल्याटिन (0–9)").tag("Latin")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(SegmentedPickerStyle())
+                    .frame(width: 322, height: 22)
+                }
+                
+                // Language
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(isEnglish ? "Language:" : "भाषा (Language):")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .frame(height: 14, alignment: .leading)
+                    
+                    Picker("", selection: $engine.language) {
+                        Text("नेपाली (Nepali)").tag("Nepali")
+                        Text("English").tag("English")
+                    }
+                    .labelsHidden()
+                    .pickerStyle(SegmentedPickerStyle())
+                    .frame(width: 322, height: 22)
+                }
+                
+                // Theme Color
+                VStack(alignment: .leading, spacing: 5) {
+                    Text(isEnglish ? "Theme Color:" : "रङ्ग (Theme Color):")
+                        .font(.system(size: 11, weight: .semibold))
+                        .foregroundColor(.secondary)
+                        .frame(height: 14, alignment: .leading)
+                    
+                    HStack(spacing: 10) {
+                        ForEach(PatroThemeColor.allCases) { option in
+                            let isSelected = engine.accentColorName == option.rawValue
+                            Button(action: {
+                                engine.accentColorName = option.rawValue
+                            }) {
+                                ZStack {
+                                    Circle()
+                                        .fill(option.swatchColor)
+                                        .frame(width: 20, height: 20)
+                                    if isSelected {
+                                        Circle()
+                                            .stroke(Color.primary, lineWidth: 1.8)
+                                            .frame(width: 25, height: 25)
+                                        Image(systemName: "checkmark")
+                                            .font(.system(size: 9, weight: .bold))
+                                            .foregroundColor(.white)
+                                    }
+                                }
+                                .frame(width: 26, height: 26)
+                                .contentShape(Circle())
+                            }
+                            .buttonStyle(PlainButtonStyle())
+                            .help(option.rawValue)
+                        }
+                        Spacer()
+                    }
+                }
+                
+                // Grid Toggles
+                Toggle(
+                    isEnglish ? "Show Gregorian date in grid (AD)" : "क्यालेन्डर कोठामा अंग्रेजी मिति (AD in Grid)",
+                    isOn: $engine.showGregorianInGrid
+                )
+                .font(.system(size: 12))
+                .lineLimit(1)
+                .frame(width: 322, height: 20, alignment: .leading)
+                
+                Divider()
+                
+                // Auto-Update & GitHub Sync Section
+                CalendarSyncSection(isEnglish: isEnglish, themeColor: themeColor)
+                
+                Divider()
+                
+                // About App
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Calendar for macOS")
+                        .font(.system(size: 12, weight: .bold))
+                    Text("Bikram Sambat 2000–2090 BS (Clean Date Calendar)")
+                        .font(.system(size: 10))
+                        .foregroundColor(.secondary)
+                }
+                .padding(.bottom, 10)
             }
-            
-            // Grid Toggles
-            Toggle(
-                isEnglish ? "Show Gregorian date in grid (AD)" : "क्यालेन्डर कोठामा अंग्रेजी मिति (AD in Grid)",
-                isOn: $engine.showGregorianInGrid
-            )
-            .font(.system(size: 12))
-            .lineLimit(1)
-            .frame(height: 20, alignment: .leading)
-            
-            Divider()
-            
-            // Auto-Update & GitHub Sync Section
-            CalendarSyncSection(isEnglish: isEnglish, themeColor: themeColor)
-            
-            Divider()
-            
-            // About App
-            VStack(alignment: .leading, spacing: 2) {
-                Text("Calendar for macOS")
-                    .font(.system(size: 12, weight: .bold))
-                Text("Bikram Sambat 2000–2090 BS (Clean Date Calendar)")
-                    .font(.system(size: 10))
-                    .foregroundColor(.secondary)
-            }
-            
-            Spacer().frame(height: 8)
+            .padding(.horizontal, 14)
+            .frame(width: 350, alignment: .topLeading)
         }
-        .padding(.horizontal, 14)
+        .frame(width: 350, height: 425, alignment: .top)
     }
 }
 
