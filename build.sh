@@ -4,9 +4,9 @@ set -e
 DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$DIR"
 
-echo "🔨 Building Patro for macOS..."
+echo "🔨 Building Calendar for macOS..."
 
-APP_NAME="Patro"
+APP_NAME="Calendar"
 BUILD_DIR="$DIR/build"
 APP_BUNDLE="$BUILD_DIR/$APP_NAME.app"
 CONTENTS="$APP_BUNDLE/Contents"
@@ -47,5 +47,5 @@ echo "📦 Creating ZIP archive..."
 
 echo "✅ Build complete: $APP_BUNDLE"
 echo "✅ Archive: $BUILD_DIR/$APP_NAME-macOS.zip"
-echo "To run Patro:"
+echo "To run Calendar:"
 echo "  open \"$APP_BUNDLE\""

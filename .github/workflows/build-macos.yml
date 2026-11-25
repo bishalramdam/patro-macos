@@ -34,8 +34,8 @@ jobs:
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Patro-macOS
-          path: build/Patro-macOS.zip
+          name: Calendar-macOS
+          path: build/Calendar-macOS.zip
           if-no-files-found: error
           retention-days: 30
 
@@ -47,20 +47,20 @@ jobs:
           tag_name: ${{ startsWith(github.ref, 'refs/tags/v') && github.ref_name || 'latest' }}
           draft: false
           prerelease: false
-          files: build/Patro-macOS.zip
+          files: build/Calendar-macOS.zip
           body: |
-            ### 🇳🇵 Patro (पात्रो) for macOS
+            ### 🇳🇵 Calendar (क्यालेन्डर) for macOS
 
             **Release Information**:
             - **Commit**: `${{ github.sha }}`
             - **Binary**: Universal (Apple Silicon arm64 + Intel x86_64)
             - **Compatibility**: macOS 12.0 (Monterey) and newer
             - **Architecture**: 100% Native AppKit & SwiftUI, Zero Electron, Zero Trackers
-            - **Features**: Native Bikram Sambat menu bar calendar, direct date selector, BS ↔ AD converter, clean language toggle.
+            - **Features**: Native Bikram Sambat menu bar calendar, direct date selector, high-contrast squircle today badge, clean language toggle.
 
             **Installation**:
-            1. Download `Patro-macOS.zip`.
-            2. Unzip and drag `Patro.app` to your `/Applications` folder.
-            3. Open Patro — the Nepali date will appear cleanly in your menu bar!
+            1. Download `Calendar-macOS.zip`.
+            2. Unzip and drag `Calendar.app` to your `/Applications` folder.
+            3. Open Calendar — the Nepali date will appear cleanly in your menu bar!
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

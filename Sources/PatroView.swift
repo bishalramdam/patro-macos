@@ -3,20 +3,17 @@ import AppKit
 
 struct PatroView: View {
     @ObservedObject var engine = PatroEngine.shared
-    @State private var selectedTab: Int = 0 // 0: Calendar, 1: Converter, 2: Settings
+    @State private var selectedTab: Int = 0 // 0: Calendar, 1: Settings
     
     var body: some View {
         VStack(spacing: 0) {
             // Top Tab Header
             HStack(spacing: 12) {
-                TabButton(title: "पात्रो", icon: "calendar", isSelected: selectedTab == 0) {
+                TabButton(title: "क्यालेन्डर", icon: "calendar", isSelected: selectedTab == 0) {
                     selectedTab = 0
                 }
-                TabButton(title: "रूपान्तरक", icon: "arrow.left.arrow.right", isSelected: selectedTab == 1) {
+                TabButton(title: "सेटिङ", icon: "gearshape", isSelected: selectedTab == 1) {
                     selectedTab = 1
-                }
-                TabButton(title: "सेटिङ", icon: "gearshape", isSelected: selectedTab == 2) {
-                    selectedTab = 2
                 }
                 
                 Spacer()
@@ -33,7 +30,7 @@ struct PatroView: View {
                         .clipShape(Circle())
                 }
                 .buttonStyle(PlainButtonStyle())
-                .help("पात्रो बन्द गर्नुहोस् (Quit Patro)")
+                .help("क्यालेन्डर बन्द गर्नुहोस् (Quit Calendar)")
             }
             .padding(.horizontal, 14)
             .padding(.top, 12)
@@ -45,17 +42,7 @@ struct PatroView: View {
             // Content Body based on selected Tab
             Group {
                 if selectedTab == 0 {
-                    CalendarTabView(engine: engine, onOpenConverter: {
-                        selectedTab = 1
-                    })
-                } else if selectedTab == 1 {
-                    ConverterTabView(engine: engine, onSelectDate: { y, m, d in
-                        engine.viewYear = y
-                        engine.viewMonth = m
-                        engine.refreshMonth()
-                        engine.selectDayNumber(d)
-                        selectedTab = 0
-                    })
+                    CalendarTabView(engine: engine)
                 } else {
                     SettingsTabView(engine: engine)
                 }
@@ -271,7 +258,6 @@ struct DropdownRow: View {
 // MARK: - Calendar Tab View
 struct CalendarTabView: View {
     @ObservedObject var engine: PatroEngine
-    var onOpenConverter: () -> Void
     @State private var copied: Bool = false
     @State private var pickerMode: String = "BS" // "BS" or "AD"
     @State private var activeDropdown: ActiveDropdown? = nil
@@ -682,25 +668,41 @@ struct CalendarTabView: View {
             let gMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
             let gName = gMonthNames[max(0, min(11, gregMonth - 1))]
             
+            let isCurrentToday = (currentDay != nil) ? isTodayCell(currentDay!) : true
+            let holidayColor = Color(red: 1.0, green: 0.27, blue: 0.23) // #FF453A vibrant red
+            let dayTextColor: Color = isCurrentToday ? Color.black : (isSatOrHol ? holidayColor : Color.primary)
+            let badgeBgColor: Color = isCurrentToday ? Color.white : (isSatOrHol ? holidayColor.opacity(0.12) : Color.secondary.opacity(0.12))
+            let badgeBorderColor: Color = isCurrentToday ? Color.clear : (isSatOrHol ? holidayColor.opacity(0.3) : Color.secondary.opacity(0.2))
+            
             HStack(alignment: .center, spacing: 12) {
-                // Big Day number
-                VStack(spacing: 1) {
+                // Left Date Badge (Squircle matching Mobile App)
+                VStack(spacing: 0) {
                     Text(activeDay)
-                        .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(isSatOrHol ? Color.red : Color.accentColor)
-                    Text(activeWeekday)
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundColor(.secondary)
+                        .font(.system(size: 20, weight: .heavy))
+                        .foregroundColor(dayTextColor)
                 }
-                .frame(width: 48)
+                .frame(width: 44, height: 44)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(badgeBgColor)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(badgeBorderColor, lineWidth: 1)
+                )
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    Text("\(activeDay) \(engine.currentMonth?.title ?? "")")
-                        .font(.system(size: 13, weight: .bold))
-                        .foregroundColor(.primary)
+                    HStack(spacing: 5) {
+                        Text("\(activeDay) \(engine.currentMonth?.title ?? "")")
+                            .font(.system(size: 13, weight: .bold))
+                            .foregroundColor(.primary)
+                        Text("(\(activeWeekday))")
+                            .font(.system(size: 11, weight: .medium))
+                            .foregroundColor(isSatOrHol ? holidayColor : Color.secondary)
+                    }
                     
                     let adYearText = String(format: "%d", gregYear)
-                    let fullADText = "\(gregDay) \(gName) \(adYearText) AD (\(activeWeekday))"
+                    let fullADText = "\(gregDay) \(gName) \(adYearText) AD"
                     Text(verbatim: fullADText)
                         .font(.system(size: 11, weight: .regular))
                         .foregroundColor(.secondary)
@@ -708,7 +710,7 @@ struct CalendarTabView: View {
                     if !activeObservance.isEmpty {
                         Text(activeObservance)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(isSatOrHol ? Color.red : Color.primary)
+                            .foregroundColor(isSatOrHol ? holidayColor : Color.primary)
                             .lineLimit(1)
                     }
                 }
@@ -793,7 +795,7 @@ struct CalendarTabView: View {
     }
 }
 
-// Clean Minimal Day Cell View (No Tithi text, No Moon Icons)
+// Clean Minimal Day Cell View (Matching Mobile App design)
 struct DayCellView: View {
     let cell: DayCellData
     let isToday: Bool
@@ -803,220 +805,43 @@ struct DayCellView: View {
     @State private var isHovered: Bool = false
     
     var body: some View {
+        let holidayRed = Color(red: 1.0, green: 0.27, blue: 0.23) // #FF453A vibrant red
+        let textColor: Color = isToday ? Color.black :
+            (cell.isSaturday || cell.isHoliday) ? holidayRed : Color.primary
+        let adTextColor: Color = isToday ? Color(red: 0.25, green: 0.25, blue: 0.27) :
+            (cell.isSaturday || cell.isHoliday) ? holidayRed.opacity(0.65) : Color.secondary.opacity(0.75)
+        
         VStack(spacing: 1) {
             // Bikram Day number
             Text(cell.dayText)
-                .font(.system(size: 13, weight: isSelected || isToday ? .bold : .medium))
-                .foregroundColor(
-                    isToday ? Color.white :
-                    (cell.isSaturday || cell.isHoliday) ? Color.red : Color.primary
-                )
+                .font(.system(size: 13, weight: isSelected || isToday ? .heavy : .semibold))
+                .foregroundColor(textColor)
             
             // Clean Gregorian day number
             if showGregorian {
                 Text(cell.gregorianDayText)
-                    .font(.system(size: 9, weight: .regular))
-                    .foregroundColor(
-                        isToday ? Color.white.opacity(0.85) : Color.secondary.opacity(0.75)
-                    )
+                    .font(.system(size: 9, weight: .medium))
+                    .foregroundColor(adTextColor)
             }
         }
         .frame(maxWidth: .infinity, minHeight: showGregorian ? 36 : 28)
         .background(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: 8)
                 .fill(
-                    isToday ? Color.accentColor :
-                    isSelected ? Color.accentColor.opacity(0.18) :
-                    isHovered ? Color.secondary.opacity(0.1) : Color.clear
+                    isToday ? Color.white :
+                    isSelected ? Color.secondary.opacity(0.2) :
+                    isHovered ? Color.secondary.opacity(0.08) : Color.clear
                 )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 6)
+            RoundedRectangle(cornerRadius: 8)
                 .stroke(
-                    (!isToday && isSelected) ? Color.accentColor : Color.clear,
-                    lineWidth: 1.5
+                    (!isToday && isSelected) ? Color.secondary.opacity(0.4) : Color.clear,
+                    lineWidth: 1.2
                 )
         )
         .onHover { hovering in
             isHovered = hovering
-        }
-    }
-}
-
-// MARK: - Converter Tab View
-struct ConverterTabView: View {
-    @ObservedObject var engine: PatroEngine
-    var onSelectDate: (Int, Int, Int) -> Void
-    
-    @State private var bsInput: String = ""
-    @State private var adInput: String = ""
-    @State private var conversionResult: ConversionResult?
-    @State private var activeMode: String = "BS" // "BS" or "AD"
-    
-    var body: some View {
-        VStack(spacing: 12) {
-            Text("वि.सं. ↔ ई.सं. मिति रूपान्तरक")
-                .font(.system(size: 14, weight: .bold))
-                .padding(.top, 10)
-            
-            // Mode selector
-            Picker("", selection: $activeMode) {
-                Text("वि.सं. बाट ई.सं. (BS ➔ AD)").tag("BS")
-                Text("ई.सं. बाट वि.सं. (AD ➔ BS)").tag("AD")
-            }
-            .pickerStyle(SegmentedPickerStyle())
-            .padding(.horizontal, 14)
-            .onChange(of: activeMode) { _ in
-                runConversion()
-            }
-            
-            // Input Fields
-            VStack(alignment: .leading, spacing: 6) {
-                if activeMode == "BS" {
-                    Text("विक्रम संवत् मिति लेख्नुहोस् (YYYY-MM-DD):")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-                    
-                    HStack {
-                        TextField("उदा: २०८३-०७-१७ वा 2083/7/17", text: $bsInput)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 13))
-                            .onChange(of: bsInput) { _ in
-                                runConversion()
-                            }
-                        
-                        Button("आज") {
-                            if let today = engine.todayInfo {
-                                bsInput = "\(today.year)-\(String(format: "%02d", today.month))-\(String(format: "%02d", today.day))"
-                                runConversion()
-                            }
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .font(.system(size: 11, weight: .medium))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(Color.secondary.opacity(0.12))
-                        .cornerRadius(5)
-                    }
-                } else {
-                    Text("Gregorian (AD) Date (YYYY-MM-DD):")
-                        .font(.system(size: 11, weight: .medium))
-                        .foregroundColor(.secondary)
-                    
-                    HStack {
-                        TextField("e.g. 2026-11-03", text: $adInput)
-                            .textFieldStyle(RoundedBorderTextFieldStyle())
-                            .font(.system(size: 13))
-                            .onChange(of: adInput) { _ in
-                                runConversion()
-                            }
-                        
-                        Button("Today") {
-                            if let today = engine.todayInfo {
-                                adInput = "\(today.gregorian.year)-\(String(format: "%02d", today.gregorian.month))-\(String(format: "%02d", today.gregorian.day))"
-                                runConversion()
-                            }
-                        }
-                        .buttonStyle(PlainButtonStyle())
-                        .font(.system(size: 11, weight: .medium))
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 5)
-                        .background(Color.secondary.opacity(0.12))
-                        .cornerRadius(5)
-                    }
-                }
-            }
-            .padding(.horizontal, 14)
-            
-            // Clean Result Card (No Tithi)
-            if let res = conversionResult, res.valid {
-                VStack(spacing: 8) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 3) {
-                            Text("विक्रम संवत् (BS):")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.secondary)
-                            Text(res.bsFormattedDev ?? (res.bsFormatted ?? ""))
-                                .font(.system(size: 16, weight: .bold))
-                                .foregroundColor(.accentColor)
-                        }
-                        
-                        Spacer()
-                        
-                        VStack(alignment: .trailing, spacing: 3) {
-                            Text("इस्वी संवत् (AD):")
-                                .font(.system(size: 10, weight: .medium))
-                                .foregroundColor(.secondary)
-                            Text(res.gregFormatted ?? "")
-                                .font(.system(size: 15, weight: .semibold))
-                                .foregroundColor(.primary)
-                        }
-                    }
-                    
-                    Divider()
-                    
-                    HStack {
-                        Text(res.weekdayName ?? "")
-                            .font(.system(size: 12, weight: .semibold))
-                            .foregroundColor(.secondary)
-                        
-                        if let obs = res.observance, !obs.isEmpty {
-                            Text("•")
-                                .foregroundColor(.secondary)
-                            Text(obs)
-                                .font(.system(size: 11, weight: .medium))
-                                .foregroundColor(.primary)
-                        }
-                        
-                        Spacer()
-                    }
-                    
-                    // Jump to calendar button
-                    Button(action: {
-                        if let y = res.year, let m = res.month, let d = res.day {
-                            onSelectDate(y, m, d)
-                        }
-                    }) {
-                        HStack(spacing: 4) {
-                            Image(systemName: "calendar")
-                            Text("पात्रोमा हेर्नुहोस् (Open in Calendar)")
-                        }
-                        .font(.system(size: 11, weight: .semibold))
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 6)
-                        .background(Color.accentColor.opacity(0.15))
-                        .foregroundColor(.accentColor)
-                        .cornerRadius(6)
-                    }
-                    .buttonStyle(PlainButtonStyle())
-                }
-                .padding(12)
-                .background(Color.secondary.opacity(0.08))
-                .cornerRadius(8)
-                .padding(.horizontal, 14)
-            } else if let res = conversionResult, let err = res.error, !err.isEmpty {
-                Text(err)
-                    .font(.system(size: 11, weight: .medium))
-                    .foregroundColor(.red)
-                    .padding(.horizontal, 14)
-            }
-            
-            Spacer().frame(height: 10)
-        }
-        .onAppear {
-            if let today = engine.todayInfo {
-                bsInput = "\(today.year)-\(String(format: "%02d", today.month))-\(String(format: "%02d", today.day))"
-                adInput = "\(today.gregorian.year)-\(String(format: "%02d", today.gregorian.month))-\(String(format: "%02d", today.gregorian.day))"
-                runConversion()
-            }
-        }
-    }
-    
-    private func runConversion() {
-        if activeMode == "BS" {
-            conversionResult = engine.convertDate(input: bsInput)
-        } else {
-            conversionResult = engine.convertDate(input: adInput)
         }
     }
 }
@@ -1085,7 +910,7 @@ struct SettingsTabView: View {
             
             // About App
             VStack(alignment: .leading, spacing: 3) {
-                Text("Patro for macOS")
+                Text("Calendar for macOS")
                     .font(.system(size: 12, weight: .bold))
                 Text("Bikram Sambat 2000–2090 BS (Clean Date Calendar)")
                     .font(.system(size: 10))
@@ -1105,7 +930,7 @@ struct CalendarSyncSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("पात्रो डेटा तथा अद्यावधिक (Calendar Sync)")
+                Text("क्यालेन्डर डेटा तथा अद्यावधिक (Calendar Sync)")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 

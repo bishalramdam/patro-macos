@@ -3,13 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>CFBundleIdentifier</key>
-    <string>com.bishal.patromac</string>
+    <string>com.bishal.calendar</string>
     <key>CFBundleName</key>
-    <string>Patro</string>
+    <string>Calendar</string>
     <key>CFBundleDisplayName</key>
-    <string>Patro</string>
+    <string>Calendar</string>
     <key>CFBundleExecutable</key>
-    <string>Patro</string>
+    <string>Calendar</string>
     <key>CFBundlePackageType</key>
     <string>APPL</string>
     <key>CFBundleShortVersionString</key>
