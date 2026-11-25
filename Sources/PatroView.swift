@@ -1,20 +1,64 @@
 import SwiftUI
 import AppKit
 
+enum PatroThemeColor: String, CaseIterable, Identifiable {
+    case blue = "Blue"
+    case green = "Green"
+    case teal = "Teal"
+    case purple = "Purple"
+    case orange = "Orange"
+    case red = "Red"
+    
+    var id: String { rawValue }
+    
+    static func resolve(_ name: String) -> Color {
+        switch name {
+        case "Green": return .green
+        case "Teal": return .teal
+        case "Purple": return .purple
+        case "Orange": return .orange
+        case "Red": return .red
+        default: return .accentColor
+        }
+    }
+    
+    var swatchColor: Color {
+        switch self {
+        case .blue: return .blue
+        case .green: return .green
+        case .teal: return .teal
+        case .purple: return .purple
+        case .orange: return .orange
+        case .red: return .red
+        }
+    }
+}
+
 struct PatroView: View {
     @ObservedObject var engine = PatroEngine.shared
     @State private var selectedTab: Int = 0 // 0: Calendar, 1: Settings
     
     var body: some View {
         let isEnglish = engine.language == "English"
+        let themeColor = PatroThemeColor.resolve(engine.accentColorName)
         
         VStack(spacing: 0) {
             // Top Tab Header
-            HStack(spacing: 12) {
-                TabButton(title: isEnglish ? "Calendar" : "क्यालेन्डर", icon: "calendar", isSelected: selectedTab == 0) {
+            HStack(spacing: 8) {
+                TabButton(
+                    title: isEnglish ? "Calendar" : "क्यालेन्डर",
+                    icon: "calendar",
+                    isSelected: selectedTab == 0,
+                    themeColor: themeColor
+                ) {
                     selectedTab = 0
                 }
-                TabButton(title: isEnglish ? "Settings" : "सेटिङ", icon: "gearshape", isSelected: selectedTab == 1) {
+                TabButton(
+                    title: isEnglish ? "Settings" : "सेटिङ",
+                    icon: "gearshape",
+                    isSelected: selectedTab == 1,
+                    themeColor: themeColor
+                ) {
                     selectedTab = 1
                 }
                 
@@ -27,15 +71,17 @@ struct PatroView: View {
                     Image(systemName: "power")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
-                        .padding(6)
+                        .frame(width: 26, height: 26)
                         .background(Color.secondary.opacity(0.12))
                         .clipShape(Circle())
+                        .contentShape(Circle())
                 }
                 .buttonStyle(PlainButtonStyle())
+                .contentShape(Circle())
                 .help(isEnglish ? "Quit Calendar" : "क्यालेन्डर बन्द गर्नुहोस् (Quit Calendar)")
             }
             .padding(.horizontal, 14)
-            .padding(.top, 12)
+            .padding(.top, 10)
             .padding(.bottom, 8)
             
             Divider()
@@ -44,9 +90,9 @@ struct PatroView: View {
             // Content Body based on selected Tab
             Group {
                 if selectedTab == 0 {
-                    CalendarTabView(engine: engine)
+                    CalendarTabView(engine: engine, themeColor: themeColor)
                 } else {
-                    SettingsTabView(engine: engine)
+                    SettingsTabView(engine: engine, themeColor: themeColor)
                 }
             }
             .frame(width: 350)
@@ -75,28 +121,41 @@ struct VisualEffectView: NSViewRepresentable {
     }
 }
 
-// Tab button component
+// Tab button component with full-pill clickable area & fixed width
 struct TabButton: View {
     let title: String
     let icon: String
     let isSelected: Bool
+    let themeColor: Color
     let action: () -> Void
+    
+    @State private var isHovered: Bool = false
     
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 Image(systemName: icon)
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(.system(size: 11.5, weight: .semibold))
                 Text(title)
-                    .font(.system(size: 12, weight: isSelected ? .bold : .medium))
+                    .font(.system(size: 12.5, weight: isSelected ? .bold : .medium))
+                    .lineLimit(1)
             }
-            .padding(.vertical, 5)
-            .padding(.horizontal, 9)
-            .background(isSelected ? Color.accentColor.opacity(0.18) : Color.clear)
-            .foregroundColor(isSelected ? .accentColor : .primary.opacity(0.75))
-            .cornerRadius(6)
+            .frame(width: 96, height: 30)
+            .background(
+                RoundedRectangle(cornerRadius: 7)
+                    .fill(
+                        isSelected ? themeColor.opacity(0.18) :
+                        isHovered ? Color.secondary.opacity(0.12) : Color.clear
+                    )
+            )
+            .foregroundColor(isSelected ? themeColor : .primary.opacity(0.85))
+            .contentShape(RoundedRectangle(cornerRadius: 7))
         }
         .buttonStyle(PlainButtonStyle())
+        .contentShape(RoundedRectangle(cornerRadius: 7))
+        .onHover { hovering in
+            isHovered = hovering
+        }
     }
 }
 
@@ -114,6 +173,7 @@ struct DropdownItem: Identifiable, Equatable {
 struct ModeCapsuleToggle: View {
     @Binding var pickerMode: String // "BS" or "AD"
     var isEnglish: Bool = false
+    var themeColor: Color = .accentColor
     var onChange: (() -> Void)? = nil
     
     var body: some View {
@@ -130,8 +190,9 @@ struct ModeCapsuleToggle: View {
                     .fixedSize()
                     .foregroundColor(pickerMode == "BS" ? .white : .secondary)
                     .frame(width: 42, height: 22)
-                    .background(pickerMode == "BS" ? Color.accentColor : Color.clear)
+                    .background(pickerMode == "BS" ? themeColor : Color.clear)
                     .cornerRadius(4)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
             .help(isEnglish ? "Bikram Sambat (BS)" : "विक्रम संवत् (BS)")
@@ -148,8 +209,9 @@ struct ModeCapsuleToggle: View {
                     .fixedSize()
                     .foregroundColor(pickerMode == "AD" ? .white : .secondary)
                     .frame(width: 42, height: 22)
-                    .background(pickerMode == "AD" ? Color.accentColor : Color.clear)
+                    .background(pickerMode == "AD" ? themeColor : Color.clear)
                     .cornerRadius(4)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(PlainButtonStyle())
             .help(isEnglish ? "Gregorian (AD)" : "इस्वी संवत् (AD)")
@@ -171,6 +233,7 @@ struct ScrollableDropdownMenu: View {
     let selectedId: Int
     let width: CGFloat
     var visibleRows: Int = 10
+    var themeColor: Color = .accentColor
     let onSelect: (Int) -> Void
     
     // Explicit height to fit ~10 rows (approx 236pt)
@@ -190,6 +253,7 @@ struct ScrollableDropdownMenu: View {
                         DropdownRow(
                             title: item.title,
                             isSelected: isSelected,
+                            themeColor: themeColor,
                             onSelect: {
                                 onSelect(item.id)
                             }
@@ -222,6 +286,7 @@ struct ScrollableDropdownMenu: View {
 struct DropdownRow: View {
     let title: String
     let isSelected: Bool
+    var themeColor: Color = .accentColor
     let onSelect: () -> Void
     @State private var isHovered: Bool = false
     
@@ -241,7 +306,7 @@ struct DropdownRow: View {
             .frame(height: 22)
             .padding(.horizontal, 7)
             .background(
-                isSelected ? Color.accentColor :
+                isSelected ? themeColor :
                 isHovered ? Color.secondary.opacity(0.12) : Color.clear
             )
             .foregroundColor(
@@ -260,6 +325,7 @@ struct DropdownRow: View {
 // MARK: - Calendar Tab View
 struct CalendarTabView: View {
     @ObservedObject var engine: PatroEngine
+    var themeColor: Color = .accentColor
     @State private var copied: Bool = false
     @State private var pickerMode: String = "BS" // "BS" or "AD"
     @State private var activeDropdown: ActiveDropdown? = nil
@@ -313,6 +379,7 @@ struct CalendarTabView: View {
         let currentADYear = engine.selectedDay?.gregorian.year ?? (engine.todayInfo?.gregorian.year ?? 2026)
         let currentADMonth = engine.selectedDay?.gregorian.month ?? (engine.todayInfo?.gregorian.month ?? 11)
         let currentADDay = engine.selectedDay?.gregorian.day ?? (engine.todayInfo?.gregorian.day ?? 6)
+        let isEnglish = engine.language == "English"
         
         VStack(spacing: 6) {
             // Month navigation bar
@@ -329,24 +396,28 @@ struct CalendarTabView: View {
                     VStack(alignment: .leading, spacing: 2) {
                         HStack(spacing: 5) {
                             Text(engine.currentMonth?.title ?? "")
-                                .font(.system(size: 18, weight: .bold))
+                                .font(.system(size: 17, weight: .bold))
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.85)
                                 .foregroundColor(.primary)
                             
                             Image(systemName: showDateSelector ? "chevron.up" : "chevron.down")
                                 .font(.system(size: 9.5, weight: .bold))
-                                .foregroundColor(showDateSelector ? Color.accentColor : Color.secondary.opacity(0.75))
+                                .foregroundColor(showDateSelector ? themeColor : Color.secondary.opacity(0.75))
                         }
                         
                         Text(engine.currentMonth?.gregorianSpan ?? "")
                             .font(.system(size: 11, weight: .medium))
+                            .lineLimit(1)
                             .foregroundColor(.secondary)
                     }
+                    .frame(height: 36, alignment: .leading)
                     .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
-                .help("मिति छान्ने विकल्प देखाउनुहोस् / लुकाउनुहोस् (Click to jump date)")
+                .help(isEnglish ? "Show / hide date selector" : "मिति छान्ने विकल्प देखाउनुहोस् / लुकाउनुहोस् (Click to jump date)")
                 
-                Spacer()
+                Spacer(minLength: 4)
                 
                 // Navigation buttons
                 HStack(spacing: 4) {
@@ -356,12 +427,13 @@ struct CalendarTabView: View {
                     }) {
                         Image(systemName: "backward.fill")
                             .font(.system(size: 9))
-                            .padding(6)
+                            .frame(width: 22, height: 24)
                             .background(Color.secondary.opacity(0.1))
                             .cornerRadius(5)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .help("अघिल्लो वर्ष (Previous Year)")
+                    .help(isEnglish ? "Previous Year" : "अघिल्लो वर्ष (Previous Year)")
                     
                     Button(action: {
                         activeDropdown = nil
@@ -369,27 +441,29 @@ struct CalendarTabView: View {
                     }) {
                         Image(systemName: "chevron.left")
                             .font(.system(size: 11, weight: .bold))
-                            .padding(6)
+                            .frame(width: 22, height: 24)
                             .background(Color.secondary.opacity(0.1))
                             .cornerRadius(5)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .help("अघिल्लो महिना (Previous Month)")
+                    .help(isEnglish ? "Previous Month" : "अघिल्लो महिना (Previous Month)")
                     
                     Button(action: {
                         activeDropdown = nil
                         engine.goToToday()
                     }) {
-                        Text(engine.language == "English" ? "Today" : "आज")
+                        Text(isEnglish ? "Today" : "आज")
                             .font(.system(size: 11, weight: .semibold))
-                            .padding(.horizontal, 8)
-                            .padding(.vertical, 5)
-                            .background(engine.isViewingToday() ? Color.accentColor : Color.secondary.opacity(0.15))
+                            .lineLimit(1)
+                            .frame(width: 48, height: 24)
+                            .background(engine.isViewingToday() ? themeColor : Color.secondary.opacity(0.15))
                             .foregroundColor(engine.isViewingToday() ? .white : .primary)
                             .cornerRadius(5)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .help(engine.language == "English" ? "Go to Today" : "आजको मितिमा जानुहोस् (Today)")
+                    .help(isEnglish ? "Go to Today" : "आजको मितिमा जानुहोस् (Today)")
                     
                     Button(action: {
                         activeDropdown = nil
@@ -397,12 +471,13 @@ struct CalendarTabView: View {
                     }) {
                         Image(systemName: "chevron.right")
                             .font(.system(size: 11, weight: .bold))
-                            .padding(6)
+                            .frame(width: 22, height: 24)
                             .background(Color.secondary.opacity(0.1))
                             .cornerRadius(5)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .help("पछिल्लो महिना (Next Month)")
+                    .help(isEnglish ? "Next Month" : "पछिल्लो महिना (Next Month)")
                     
                     Button(action: {
                         activeDropdown = nil
@@ -410,12 +485,13 @@ struct CalendarTabView: View {
                     }) {
                         Image(systemName: "forward.fill")
                             .font(.system(size: 9))
-                            .padding(6)
+                            .frame(width: 22, height: 24)
                             .background(Color.secondary.opacity(0.1))
                             .cornerRadius(5)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .help("पछिल्लो वर्ष (Next Year)")
+                    .help(isEnglish ? "Next Year" : "पछिल्लो वर्ष (Next Year)")
                 }
             }
             .padding(.horizontal, 14)
@@ -432,7 +508,7 @@ struct CalendarTabView: View {
             if showDateSelector {
                 HStack(spacing: 6) {
                 // Mode Toggle: [ वि.सं. | ई.सं. ] (or [ BS | AD ]) (fixed 88pt)
-                ModeCapsuleToggle(pickerMode: $pickerMode, isEnglish: engine.language == "English") {
+                ModeCapsuleToggle(pickerMode: $pickerMode, isEnglish: isEnglish, themeColor: themeColor) {
                     activeDropdown = nil
                 }
                 
@@ -473,6 +549,7 @@ struct CalendarTabView: View {
                             selectedId: pickerMode == "BS" ? engine.viewYear : currentADYear,
                             width: dWidth,
                             visibleRows: 10,
+                            themeColor: themeColor,
                             onSelect: { selectedId in
                                 if pickerMode == "BS" {
                                     engine.jumpToBS(year: selectedId, month: engine.viewMonth, day: engine.selectedDay?.day)
@@ -525,6 +602,7 @@ struct CalendarTabView: View {
                             selectedId: pickerMode == "BS" ? engine.viewMonth : currentADMonth,
                             width: dWidth,
                             visibleRows: 10,
+                            themeColor: themeColor,
                             onSelect: { selectedId in
                                 if pickerMode == "BS" {
                                     engine.jumpToBS(year: engine.viewYear, month: selectedId, day: engine.selectedDay?.day)
@@ -579,6 +657,7 @@ struct CalendarTabView: View {
                             selectedId: pickerMode == "BS" ? (engine.selectedDay?.day ?? 1) : currentADDay,
                             width: dWidth,
                             visibleRows: 10,
+                            themeColor: themeColor,
                             onSelect: { selectedId in
                                 if pickerMode == "BS" {
                                     engine.selectDayNumber(selectedId)
@@ -619,7 +698,8 @@ struct CalendarTabView: View {
                     }
                 }
                 
-                // Clean Calendar Days Grid
+                // Clean Calendar Days Grid (uniform fixed row height so row 1 & last row never stretch)
+                let cellHeight: CGFloat = engine.showGregorianInGrid ? 36 : 28
                 VStack(spacing: 3) {
                     ForEach(0..<month.weeks.count, id: \.self) { weekIndex in
                         let week = month.weeks[weekIndex]
@@ -630,20 +710,21 @@ struct CalendarTabView: View {
                                         cell: cell,
                                         isToday: isTodayCell(cell),
                                         isSelected: (engine.selectedDay?.year == cell.year && engine.selectedDay?.month == cell.month && engine.selectedDay?.day == cell.day),
-                                        showGregorian: engine.showGregorianInGrid
+                                        showGregorian: engine.showGregorianInGrid,
+                                        themeColor: themeColor
                                     )
                                     .onTapGesture {
                                         activeDropdown = nil
                                         engine.selectedDay = cell
                                     }
                                 } else {
-                                    // Empty padding cell
-                                    Rectangle()
-                                        .fill(Color.clear)
-                                        .frame(maxWidth: .infinity, minHeight: 36)
+                                    // Fixed-height empty padding cell (prevents row 1 & last row vertical gap)
+                                    Color.clear
+                                        .frame(maxWidth: .infinity, minHeight: cellHeight, maxHeight: cellHeight)
                                 }
                             }
                         }
+                        .frame(height: cellHeight)
                     }
                 }
                 .padding(.horizontal, 10)
@@ -675,22 +756,25 @@ struct CalendarTabView: View {
                 VStack(spacing: 1) {
                     Text(activeDay)
                         .font(.system(size: 24, weight: .bold))
-                        .foregroundColor(isSatOrHol ? Color.red : Color.accentColor)
+                        .foregroundColor(isSatOrHol ? Color.red : themeColor)
                     Text(activeWeekday)
                         .font(.system(size: 10, weight: .medium))
+                        .lineLimit(1)
                         .foregroundColor(.secondary)
                 }
-                .frame(width: 48)
+                .frame(width: 54)
                 
                 VStack(alignment: .leading, spacing: 2) {
                     Text("\(activeDay) \(engine.currentMonth?.title ?? "")")
                         .font(.system(size: 13, weight: .bold))
+                        .lineLimit(1)
                         .foregroundColor(.primary)
                     
                     let adYearText = String(format: "%d", gregYear)
                     let fullADText = "\(gregDay) \(gName) \(adYearText) AD (\(activeWeekday))"
                     Text(verbatim: fullADText)
                         .font(.system(size: 11, weight: .regular))
+                        .lineLimit(1)
                         .foregroundColor(.secondary)
                     
                     if !activeObservance.isEmpty {
@@ -725,10 +809,12 @@ struct CalendarTabView: View {
                     .background(copied ? Color.green.opacity(0.18) : Color.secondary.opacity(0.12))
                     .foregroundColor(copied ? .green : .primary)
                     .cornerRadius(6)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
-                .help("मिति क्लिपबोर्डमा कपी गर्नुहोस्")
+                .help(isEnglish ? "Copy date to clipboard" : "मिति क्लिपबोर्डमा कपी गर्नुहोस्")
             }
+            .frame(height: 52)
             .padding(.horizontal, 14)
             .padding(.bottom, 10)
             .contentShape(Rectangle())
@@ -787,10 +873,13 @@ struct DayCellView: View {
     let isToday: Bool
     let isSelected: Bool
     let showGregorian: Bool
+    var themeColor: Color = .accentColor
     
     @State private var isHovered: Bool = false
     
     var body: some View {
+        let cellHeight: CGFloat = showGregorian ? 36 : 28
+        
         VStack(spacing: 1) {
             // Bikram Day number
             Text(cell.dayText)
@@ -809,22 +898,23 @@ struct DayCellView: View {
                     )
             }
         }
-        .frame(maxWidth: .infinity, minHeight: showGregorian ? 36 : 28)
+        .frame(maxWidth: .infinity, minHeight: cellHeight, maxHeight: cellHeight)
         .background(
             RoundedRectangle(cornerRadius: 6)
                 .fill(
-                    isToday ? Color.accentColor :
-                    isSelected ? Color.accentColor.opacity(0.18) :
+                    isToday ? themeColor :
+                    isSelected ? themeColor.opacity(0.18) :
                     isHovered ? Color.secondary.opacity(0.1) : Color.clear
                 )
         )
         .overlay(
             RoundedRectangle(cornerRadius: 6)
                 .stroke(
-                    (!isToday && isSelected) ? Color.accentColor : Color.clear,
+                    (!isToday && isSelected) ? themeColor : Color.clear,
                     lineWidth: 1.5
                 )
         )
+        .contentShape(RoundedRectangle(cornerRadius: 6))
         .onHover { hovering in
             isHovered = hovering
         }
@@ -834,20 +924,23 @@ struct DayCellView: View {
 // MARK: - Settings Tab View
 struct SettingsTabView: View {
     @ObservedObject var engine: PatroEngine
+    var themeColor: Color = .accentColor
     
     var body: some View {
         let isEnglish = engine.language == "English"
         
-        VStack(alignment: .leading, spacing: 14) {
+        VStack(alignment: .leading, spacing: 11) {
             Text(isEnglish ? "Settings & Preferences" : "सेटिङ तथा प्राथमिकताहरू")
                 .font(.system(size: 14, weight: .bold))
+                .frame(height: 18, alignment: .leading)
                 .padding(.top, 10)
             
             // Menu bar label format
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(isEnglish ? "Menu Bar Format:" : "मेनु बार फर्म्याट (Menu Bar Format):")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
+                    .frame(height: 14, alignment: .leading)
                 
                 Picker("", selection: $engine.barFormat) {
                     Text(isEnglish ? "With Year (17 Kartik 2083)" : "वर्षसहित (१७ कात्तिक २०८३)").tag("Year")
@@ -856,47 +949,93 @@ struct SettingsTabView: View {
                     Text(isEnglish ? "Numeric Only (2083-07-17)" : "अङ्क मात्र (२०८३-०७-१७)").tag("Numeric")
                 }
                 .pickerStyle(MenuPickerStyle())
+                .frame(height: 22)
             }
             
             // Numerals Style
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(isEnglish ? "Numerals:" : "अङ्कको लिपि (Numerals):")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
+                    .frame(height: 14, alignment: .leading)
                 
                 Picker("", selection: $engine.numerals) {
                     Text(isEnglish ? "Devanagari (०१२३४५६७८९)" : "देवनागरी (०१२३४५६७८९)").tag("Devanagari")
                     Text(isEnglish ? "Latin (0123456789)" : "ल्याटिन (0123456789)").tag("Latin")
                 }
                 .pickerStyle(SegmentedPickerStyle())
+                .frame(height: 22)
             }
             
             // Language
-            VStack(alignment: .leading, spacing: 5) {
+            VStack(alignment: .leading, spacing: 4) {
                 Text(isEnglish ? "Language:" : "भाषा (Language):")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
+                    .frame(height: 14, alignment: .leading)
                 
                 Picker("", selection: $engine.language) {
                     Text("नेपाली (Nepali)").tag("Nepali")
                     Text("English").tag("English")
                 }
                 .pickerStyle(SegmentedPickerStyle())
+                .frame(height: 22)
+            }
+            
+            // Theme Color
+            VStack(alignment: .leading, spacing: 5) {
+                Text(isEnglish ? "Theme Color:" : "रङ्ग (Theme Color):")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundColor(.secondary)
+                    .frame(height: 14, alignment: .leading)
+                
+                HStack(spacing: 10) {
+                    ForEach(PatroThemeColor.allCases) { option in
+                        let isSelected = engine.accentColorName == option.rawValue
+                        Button(action: {
+                            engine.accentColorName = option.rawValue
+                        }) {
+                            ZStack {
+                                Circle()
+                                    .fill(option.swatchColor)
+                                    .frame(width: 20, height: 20)
+                                if isSelected {
+                                    Circle()
+                                        .stroke(Color.primary, lineWidth: 1.8)
+                                        .frame(width: 25, height: 25)
+                                    Image(systemName: "checkmark")
+                                        .font(.system(size: 9, weight: .bold))
+                                        .foregroundColor(.white)
+                                }
+                            }
+                            .frame(width: 26, height: 26)
+                            .contentShape(Circle())
+                        }
+                        .buttonStyle(PlainButtonStyle())
+                        .help(option.rawValue)
+                    }
+                    Spacer()
+                }
             }
             
             // Grid Toggles
-            Toggle(isEnglish ? "Show Gregorian date in grid (AD)" : "क्यालेन्डर कोठामा अंग्रेजी मिति देखाउने (AD in Grid)", isOn: $engine.showGregorianInGrid)
-                .font(.system(size: 12))
+            Toggle(
+                isEnglish ? "Show Gregorian date in grid (AD)" : "क्यालेन्डर कोठामा अंग्रेजी मिति (AD in Grid)",
+                isOn: $engine.showGregorianInGrid
+            )
+            .font(.system(size: 12))
+            .lineLimit(1)
+            .frame(height: 20, alignment: .leading)
             
             Divider()
             
             // Auto-Update & GitHub Sync Section
-            CalendarSyncSection(isEnglish: isEnglish)
+            CalendarSyncSection(isEnglish: isEnglish, themeColor: themeColor)
             
             Divider()
             
             // About App
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("Calendar for macOS")
                     .font(.system(size: 12, weight: .bold))
                 Text("Bikram Sambat 2000–2090 BS (Clean Date Calendar)")
@@ -914,29 +1053,32 @@ struct SettingsTabView: View {
 struct CalendarSyncSection: View {
     @ObservedObject var updater = PatroUpdateManager.shared
     var isEnglish: Bool
+    var themeColor: Color = .accentColor
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text(isEnglish ? "Calendar Data & Sync" : "क्यालेन्डर डेटा तथा अद्यावधिक (Calendar Sync)")
+                Text(isEnglish ? "Calendar Data & Sync" : "क्यालेन्डर डेटा तथा अद्यावधिक (Sync)")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
+                    .lineLimit(1)
                 
                 Spacer()
                 
-                Text(isEnglish ? "Verified: \(updater.publishedThrough)" : "प्रमाणित: \(updater.publishedThrough) सम्म")
+                Text(isEnglish ? "Verified: \(updater.publishedThrough)" : "प्रमाणित: \(updater.publishedThrough)")
                     .font(.system(size: 10, weight: .bold))
-                    .foregroundColor(.accentColor)
+                    .foregroundColor(themeColor)
                     .padding(.horizontal, 6)
                     .padding(.vertical, 2)
-                    .background(Color.accentColor.opacity(0.12))
+                    .background(themeColor.opacity(0.12))
                     .cornerRadius(4)
             }
+            .frame(height: 18)
             
-            Text(isEnglish ? "Update new year calendar data directly from yogeshojha/patro on GitHub without rebuilding:" : "GitHub को yogeshojha/patro मा नयाँ वर्षको डेटा अपडेट हुनासाथ एप पुनः रिबिल्ड नगरी यहाँबाट सिधै अपडेट गर्न सकिन्छ:")
+            Text(isEnglish ? "Update new year calendar data directly from yogeshojha/patro on GitHub without rebuilding:" : "GitHub को yogeshojha/patro बाट नयाँ वर्षको डेटा एप रिबिल्ड नगरी अपडेट गर्नुहोस्:")
                 .font(.system(size: 10))
                 .foregroundColor(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
+                .frame(height: 28, alignment: .topLeading)
             
             // Buttons
             HStack(spacing: 8) {
@@ -953,14 +1095,16 @@ struct CalendarSyncSection: View {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.system(size: 10))
                         }
-                        Text(updater.isChecking ? (isEnglish ? "Checking..." : "जाँचिँदैछ...") : (isEnglish ? "Update from GitHub" : "GitHub बाट अपडेट गर्नुहोस्"))
+                        Text(updater.isChecking ? (isEnglish ? "Checking..." : "जाँचिँदैछ...") : (isEnglish ? "Update from GitHub" : "GitHub बाट अपडेट"))
                             .font(.system(size: 11, weight: .medium))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
-                    .background(Color.accentColor.opacity(0.15))
-                    .foregroundColor(.accentColor)
+                    .background(themeColor.opacity(0.15))
+                    .foregroundColor(themeColor)
                     .cornerRadius(6)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
                 .disabled(updater.isChecking)
@@ -973,14 +1117,16 @@ struct CalendarSyncSection: View {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
                             .font(.system(size: 10))
-                        Text(isEnglish ? "Local Folder" : "स्थानीय फोल्डरबाट")
+                        Text(isEnglish ? "Local Folder" : "स्थानीय फोल्डर")
                             .font(.system(size: 11, weight: .medium))
+                            .lineLimit(1)
                     }
                     .padding(.horizontal, 8)
                     .padding(.vertical, 5)
                     .background(Color.secondary.opacity(0.12))
                     .foregroundColor(.primary)
                     .cornerRadius(6)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(PlainButtonStyle())
                 .help(isEnglish ? "Sync calendar data from local patro/ folder" : "स्थानीय patro/ फोल्डरबाट नयाँ फाइल सिङ्क गर्नुहोस्")

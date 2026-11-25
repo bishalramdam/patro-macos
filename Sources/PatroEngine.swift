@@ -135,6 +135,11 @@ class PatroEngine: ObservableObject {
     }
     @Published var showGregorianInGrid: Bool = true
     @Published var showTithiInGrid: Bool = true
+    @Published var accentColorName: String = UserDefaults.standard.string(forKey: "accentColorName") ?? "Blue" {
+        didSet {
+            UserDefaults.standard.set(accentColorName, forKey: "accentColorName")
+        }
+    }
     
     init() {
         setupContext()
