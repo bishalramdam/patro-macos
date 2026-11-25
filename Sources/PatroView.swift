@@ -6,13 +6,15 @@ struct PatroView: View {
     @State private var selectedTab: Int = 0 // 0: Calendar, 1: Settings
     
     var body: some View {
+        let isEnglish = engine.language == "English"
+        
         VStack(spacing: 0) {
             // Top Tab Header
             HStack(spacing: 12) {
-                TabButton(title: "क्यालेन्डर", icon: "calendar", isSelected: selectedTab == 0) {
+                TabButton(title: isEnglish ? "Calendar" : "क्यालेन्डर", icon: "calendar", isSelected: selectedTab == 0) {
                     selectedTab = 0
                 }
-                TabButton(title: "सेटिङ", icon: "gearshape", isSelected: selectedTab == 1) {
+                TabButton(title: isEnglish ? "Settings" : "सेटिङ", icon: "gearshape", isSelected: selectedTab == 1) {
                     selectedTab = 1
                 }
                 
@@ -30,7 +32,7 @@ struct PatroView: View {
                         .clipShape(Circle())
                 }
                 .buttonStyle(PlainButtonStyle())
-                .help("क्यालेन्डर बन्द गर्नुहोस् (Quit Calendar)")
+                .help(isEnglish ? "Quit Calendar" : "क्यालेन्डर बन्द गर्नुहोस् (Quit Calendar)")
             }
             .padding(.horizontal, 14)
             .padding(.top, 12)
@@ -378,7 +380,7 @@ struct CalendarTabView: View {
                         activeDropdown = nil
                         engine.goToToday()
                     }) {
-                        Text("आज")
+                        Text(engine.language == "English" ? "Today" : "आज")
                             .font(.system(size: 11, weight: .semibold))
                             .padding(.horizontal, 8)
                             .padding(.vertical, 5)
@@ -387,7 +389,7 @@ struct CalendarTabView: View {
                             .cornerRadius(5)
                     }
                     .buttonStyle(PlainButtonStyle())
-                    .help("आजको मितिमा जानुहोस् (Today)")
+                    .help(engine.language == "English" ? "Go to Today" : "आजको मितिमा जानुहोस् (Today)")
                     
                     Button(action: {
                         activeDropdown = nil
@@ -834,42 +836,44 @@ struct SettingsTabView: View {
     @ObservedObject var engine: PatroEngine
     
     var body: some View {
+        let isEnglish = engine.language == "English"
+        
         VStack(alignment: .leading, spacing: 14) {
-            Text("सेटिङ तथा प्राथमिकताहरू")
+            Text(isEnglish ? "Settings & Preferences" : "सेटिङ तथा प्राथमिकताहरू")
                 .font(.system(size: 14, weight: .bold))
                 .padding(.top, 10)
             
             // Menu bar label format
             VStack(alignment: .leading, spacing: 5) {
-                Text("मेनु बार फर्म्याट (Menu Bar Format):")
+                Text(isEnglish ? "Menu Bar Format:" : "मेनु बार फर्म्याट (Menu Bar Format):")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 
                 Picker("", selection: $engine.barFormat) {
-                    Text("वर्षसहित (१७ कात्तिक २०८३)").tag("Year")
-                    Text("विस्तृत (मङ्गलबार, १७ कात्तिक २०८३)").tag("Full")
-                    Text("अंग्रेजी मितिसहित (१७ कात्तिक २०८३, 3 Nov)").tag("WithGregorian")
-                    Text("अङ्क मात्र (२०८३-०७-१७)").tag("Numeric")
+                    Text(isEnglish ? "With Year (17 Kartik 2083)" : "वर्षसहित (१७ कात्तिक २०८३)").tag("Year")
+                    Text(isEnglish ? "Full (Tuesday, 17 Kartik 2083)" : "विस्तृत (मङ्गलबार, १७ कात्तिक २०८३)").tag("Full")
+                    Text(isEnglish ? "With Gregorian (17 Kartik 2083, 3 Nov)" : "अंग्रेजी मितिसहित (१७ कात्तिक २०८३, 3 Nov)").tag("WithGregorian")
+                    Text(isEnglish ? "Numeric Only (2083-07-17)" : "अङ्क मात्र (२०८३-०७-१७)").tag("Numeric")
                 }
                 .pickerStyle(MenuPickerStyle())
             }
             
             // Numerals Style
             VStack(alignment: .leading, spacing: 5) {
-                Text("अङ्कको लिपि (Numerals):")
+                Text(isEnglish ? "Numerals:" : "अङ्कको लिपि (Numerals):")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 
                 Picker("", selection: $engine.numerals) {
-                    Text("देवनागरी (०१२३४५६७८९)").tag("Devanagari")
-                    Text("ल्याटिन (0123456789)").tag("Latin")
+                    Text(isEnglish ? "Devanagari (०१२३४५६७८९)" : "देवनागरी (०१२३४५६७८९)").tag("Devanagari")
+                    Text(isEnglish ? "Latin (0123456789)" : "ल्याटिन (0123456789)").tag("Latin")
                 }
                 .pickerStyle(SegmentedPickerStyle())
             }
             
             // Language
             VStack(alignment: .leading, spacing: 5) {
-                Text("भाषा (Language):")
+                Text(isEnglish ? "Language:" : "भाषा (Language):")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 
@@ -881,13 +885,13 @@ struct SettingsTabView: View {
             }
             
             // Grid Toggles
-            Toggle("क्यालेन्डर कोठामा अंग्रेजी मिति देखाउने (AD in Grid)", isOn: $engine.showGregorianInGrid)
+            Toggle(isEnglish ? "Show Gregorian date in grid (AD)" : "क्यालेन्डर कोठामा अंग्रेजी मिति देखाउने (AD in Grid)", isOn: $engine.showGregorianInGrid)
                 .font(.system(size: 12))
             
             Divider()
             
             // Auto-Update & GitHub Sync Section
-            CalendarSyncSection()
+            CalendarSyncSection(isEnglish: isEnglish)
             
             Divider()
             
@@ -909,17 +913,18 @@ struct SettingsTabView: View {
 // Calendar Sync & GitHub Auto-Update Section
 struct CalendarSyncSection: View {
     @ObservedObject var updater = PatroUpdateManager.shared
+    var isEnglish: Bool
     
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack {
-                Text("क्यालेन्डर डेटा तथा अद्यावधिक (Calendar Sync)")
+                Text(isEnglish ? "Calendar Data & Sync" : "क्यालेन्डर डेटा तथा अद्यावधिक (Calendar Sync)")
                     .font(.system(size: 11, weight: .semibold))
                     .foregroundColor(.secondary)
                 
                 Spacer()
                 
-                Text("प्रमाणित: \(updater.publishedThrough) सम्म")
+                Text(isEnglish ? "Verified: \(updater.publishedThrough)" : "प्रमाणित: \(updater.publishedThrough) सम्म")
                     .font(.system(size: 10, weight: .bold))
                     .foregroundColor(.accentColor)
                     .padding(.horizontal, 6)
@@ -928,7 +933,7 @@ struct CalendarSyncSection: View {
                     .cornerRadius(4)
             }
             
-            Text("GitHub को yogeshojha/patro मा नयाँ वर्षको डेटा अपडेट हुनासाथ एप पुनः रिबिल्ड नगरी यहाँबाट सिधै अपडेट गर्न सकिन्छ:")
+            Text(isEnglish ? "Update new year calendar data directly from yogeshojha/patro on GitHub without rebuilding:" : "GitHub को yogeshojha/patro मा नयाँ वर्षको डेटा अपडेट हुनासाथ एप पुनः रिबिल्ड नगरी यहाँबाट सिधै अपडेट गर्न सकिन्छ:")
                 .font(.system(size: 10))
                 .foregroundColor(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
@@ -948,7 +953,7 @@ struct CalendarSyncSection: View {
                             Image(systemName: "arrow.triangle.2.circlepath")
                                 .font(.system(size: 10))
                         }
-                        Text(updater.isChecking ? "जाँचिँदैछ..." : "GitHub बाट अपडेट गर्नुहोस्")
+                        Text(updater.isChecking ? (isEnglish ? "Checking..." : "जाँचिँदैछ...") : (isEnglish ? "Update from GitHub" : "GitHub बाट अपडेट गर्नुहोस्"))
                             .font(.system(size: 11, weight: .medium))
                     }
                     .padding(.horizontal, 8)
@@ -968,7 +973,7 @@ struct CalendarSyncSection: View {
                     HStack(spacing: 4) {
                         Image(systemName: "folder")
                             .font(.system(size: 10))
-                        Text("स्थानीय फोल्डरबाट")
+                        Text(isEnglish ? "Local Folder" : "स्थानीय फोल्डरबाट")
                             .font(.system(size: 11, weight: .medium))
                     }
                     .padding(.horizontal, 8)
@@ -978,7 +983,7 @@ struct CalendarSyncSection: View {
                     .cornerRadius(6)
                 }
                 .buttonStyle(PlainButtonStyle())
-                .help("स्थानीय patro/ फोल्डरबाट नयाँ फाइल सिङ्क गर्नुहोस्")
+                .help(isEnglish ? "Sync calendar data from local patro/ folder" : "स्थानीय patro/ फोल्डरबाट नयाँ फाइल सिङ्क गर्नुहोस्")
             }
             .padding(.top, 2)
             
