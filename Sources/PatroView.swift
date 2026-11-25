@@ -95,10 +95,10 @@ struct PatroView: View {
                     SettingsTabView(engine: engine, themeColor: themeColor)
                 }
             }
-            .frame(width: 350, height: 425, alignment: .top)
+            .frame(width: 350)
         }
         .background(VisualEffectView(material: .popover, blendingMode: .behindWindow))
-        .frame(width: 350, height: 474, alignment: .top)
+        .frame(width: 350)
     }
 }
 
@@ -827,8 +827,6 @@ struct CalendarTabView: View {
                     withAnimation(.easeInOut(duration: 0.1)) { activeDropdown = nil }
                 }
             }
-            
-            Spacer(minLength: 0)
         }
         .contentShape(Rectangle())
         .onTapGesture {

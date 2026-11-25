@@ -11,13 +11,9 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         // Setup popover
         popover = NSPopover()
-        popover.contentSize = NSSize(width: 350, height: 474)
+        popover.contentSize = NSSize(width: 350, height: 390)
         popover.behavior = .transient
-        let hostingController = NSHostingController(rootView: PatroView())
-        if #available(macOS 13.0, *) {
-            hostingController.sizingOptions = []
-        }
-        popover.contentViewController = hostingController
+        popover.contentViewController = NSHostingController(rootView: PatroView())
         
         // Setup status item in the macOS menu bar
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
