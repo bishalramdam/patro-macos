@@ -668,41 +668,25 @@ struct CalendarTabView: View {
             let gMonthNames = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
             let gName = gMonthNames[max(0, min(11, gregMonth - 1))]
             
-            let isCurrentToday = (currentDay != nil) ? isTodayCell(currentDay!) : true
-            let holidayColor = Color(red: 1.0, green: 0.27, blue: 0.23) // #FF453A vibrant red
-            let dayTextColor: Color = isCurrentToday ? Color.black : (isSatOrHol ? holidayColor : Color.primary)
-            let badgeBgColor: Color = isCurrentToday ? Color.white : (isSatOrHol ? holidayColor.opacity(0.12) : Color.secondary.opacity(0.12))
-            let badgeBorderColor: Color = isCurrentToday ? Color.clear : (isSatOrHol ? holidayColor.opacity(0.3) : Color.secondary.opacity(0.2))
-            
             HStack(alignment: .center, spacing: 12) {
-                // Left Date Badge (Squircle matching Mobile App)
-                VStack(spacing: 0) {
+                // Big Day number
+                VStack(spacing: 1) {
                     Text(activeDay)
-                        .font(.system(size: 20, weight: .heavy))
-                        .foregroundColor(dayTextColor)
+                        .font(.system(size: 24, weight: .bold))
+                        .foregroundColor(isSatOrHol ? Color.red : Color.accentColor)
+                    Text(activeWeekday)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundColor(.secondary)
                 }
-                .frame(width: 44, height: 44)
-                .background(
-                    RoundedRectangle(cornerRadius: 12)
-                        .fill(badgeBgColor)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 12)
-                        .stroke(badgeBorderColor, lineWidth: 1)
-                )
+                .frame(width: 48)
                 
                 VStack(alignment: .leading, spacing: 2) {
-                    HStack(spacing: 5) {
-                        Text("\(activeDay) \(engine.currentMonth?.title ?? "")")
-                            .font(.system(size: 13, weight: .bold))
-                            .foregroundColor(.primary)
-                        Text("(\(activeWeekday))")
-                            .font(.system(size: 11, weight: .medium))
-                            .foregroundColor(isSatOrHol ? holidayColor : Color.secondary)
-                    }
+                    Text("\(activeDay) \(engine.currentMonth?.title ?? "")")
+                        .font(.system(size: 13, weight: .bold))
+                        .foregroundColor(.primary)
                     
                     let adYearText = String(format: "%d", gregYear)
-                    let fullADText = "\(gregDay) \(gName) \(adYearText) AD"
+                    let fullADText = "\(gregDay) \(gName) \(adYearText) AD (\(activeWeekday))"
                     Text(verbatim: fullADText)
                         .font(.system(size: 11, weight: .regular))
                         .foregroundColor(.secondary)
@@ -710,7 +694,7 @@ struct CalendarTabView: View {
                     if !activeObservance.isEmpty {
                         Text(activeObservance)
                             .font(.system(size: 11, weight: .semibold))
-                            .foregroundColor(isSatOrHol ? holidayColor : Color.primary)
+                            .foregroundColor(isSatOrHol ? Color.red : Color.primary)
                             .lineLimit(1)
                     }
                 }
@@ -795,7 +779,7 @@ struct CalendarTabView: View {
     }
 }
 
-// Clean Minimal Day Cell View (Matching Mobile App design)
+// Clean Minimal Day Cell View (No Tithi text, No Moon Icons)
 struct DayCellView: View {
     let cell: DayCellData
     let isToday: Bool
@@ -805,39 +789,38 @@ struct DayCellView: View {
     @State private var isHovered: Bool = false
     
     var body: some View {
-        let holidayRed = Color(red: 1.0, green: 0.27, blue: 0.23) // #FF453A vibrant red
-        let textColor: Color = isToday ? Color.black :
-            (cell.isSaturday || cell.isHoliday) ? holidayRed : Color.primary
-        let adTextColor: Color = isToday ? Color(red: 0.25, green: 0.25, blue: 0.27) :
-            (cell.isSaturday || cell.isHoliday) ? holidayRed.opacity(0.65) : Color.secondary.opacity(0.75)
-        
         VStack(spacing: 1) {
             // Bikram Day number
             Text(cell.dayText)
-                .font(.system(size: 13, weight: isSelected || isToday ? .heavy : .semibold))
-                .foregroundColor(textColor)
+                .font(.system(size: 13, weight: isSelected || isToday ? .bold : .medium))
+                .foregroundColor(
+                    isToday ? Color.white :
+                    (cell.isSaturday || cell.isHoliday) ? Color.red : Color.primary
+                )
             
             // Clean Gregorian day number
             if showGregorian {
                 Text(cell.gregorianDayText)
-                    .font(.system(size: 9, weight: .medium))
-                    .foregroundColor(adTextColor)
+                    .font(.system(size: 9, weight: .regular))
+                    .foregroundColor(
+                        isToday ? Color.white.opacity(0.85) : Color.secondary.opacity(0.75)
+                    )
             }
         }
         .frame(maxWidth: .infinity, minHeight: showGregorian ? 36 : 28)
         .background(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 6)
                 .fill(
-                    isToday ? Color.white :
-                    isSelected ? Color.secondary.opacity(0.2) :
-                    isHovered ? Color.secondary.opacity(0.08) : Color.clear
+                    isToday ? Color.accentColor :
+                    isSelected ? Color.accentColor.opacity(0.18) :
+                    isHovered ? Color.secondary.opacity(0.1) : Color.clear
                 )
         )
         .overlay(
-            RoundedRectangle(cornerRadius: 8)
+            RoundedRectangle(cornerRadius: 6)
                 .stroke(
-                    (!isToday && isSelected) ? Color.secondary.opacity(0.4) : Color.clear,
-                    lineWidth: 1.2
+                    (!isToday && isSelected) ? Color.accentColor : Color.clear,
+                    lineWidth: 1.5
                 )
         )
         .onHover { hovering in

@@ -56,7 +56,7 @@ jobs:
             - **Binary**: Universal (Apple Silicon arm64 + Intel x86_64)
             - **Compatibility**: macOS 12.0 (Monterey) and newer
             - **Architecture**: 100% Native AppKit & SwiftUI, Zero Electron, Zero Trackers
-            - **Features**: Native Bikram Sambat menu bar calendar, direct date selector, high-contrast squircle today badge, clean language toggle.
+            - **Features**: Native Bikram Sambat menu bar calendar, direct date selector, clean language toggle.
 
             **Installation**:
             1. Download `Calendar-macOS.zip`.
