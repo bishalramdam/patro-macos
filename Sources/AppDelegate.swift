@@ -111,7 +111,16 @@ class AppDelegate: NSObject, NSApplicationDelegate {
             if PatroEngine.shared.isTrackingToday || PatroEngine.shared.isViewingToday() {
                 PatroEngine.shared.goToToday()
             }
-            popover.show(relativeTo: button.bounds, of: button, preferredEdge: .minY)
+            if let contentView = popover.contentViewController?.view {
+                contentView.layoutSubtreeIfNeeded()
+                let fitting = contentView.fittingSize
+                if fitting.width > 0 && fitting.height > 0 {
+                    popover.contentSize = fitting
+                }
+            }
+            let edge: NSRectEdge = button.isFlipped ? .maxY : .minY
+            popover.show(relativeTo: button.bounds, of: button, preferredEdge: edge)
+            NSApp.activate(ignoringOtherApps: true)
             popover.contentViewController?.view.window?.makeKey()
         }
     }
