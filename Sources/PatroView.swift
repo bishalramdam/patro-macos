@@ -960,14 +960,14 @@ struct SettingsTabView: View {
         let isEnglish = engine.language == "English"
         
         ScrollView(.vertical, showsIndicators: false) {
-            VStack(alignment: .leading, spacing: 10) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text(isEnglish ? "Settings & Preferences" : "सेटिङ तथा प्राथमिकताहरू")
-                    .font(.system(size: 14, weight: .bold))
-                    .frame(height: 18, alignment: .leading)
-                    .padding(.top, 10)
+                    .font(.system(size: 13.5, weight: .bold))
+                    .frame(height: 17, alignment: .leading)
+                    .padding(.top, 8)
                 
                 // Menu bar label format
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(isEnglish ? "Menu Bar Format:" : "मेनु बार फर्म्याट (Menu Bar Format):")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
@@ -985,7 +985,7 @@ struct SettingsTabView: View {
                 }
                 
                 // Numerals Style
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(isEnglish ? "Numerals:" : "अङ्कको लिपि (Numerals):")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
@@ -1001,7 +1001,7 @@ struct SettingsTabView: View {
                 }
                 
                 // Language
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 3) {
                     Text(isEnglish ? "Language:" : "भाषा (Language):")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
@@ -1017,7 +1017,7 @@ struct SettingsTabView: View {
                 }
                 
                 // Theme Color
-                VStack(alignment: .leading, spacing: 5) {
+                VStack(alignment: .leading, spacing: 4) {
                     Text(isEnglish ? "Theme Color:" : "रङ्ग (Theme Color):")
                         .font(.system(size: 11, weight: .semibold))
                         .foregroundColor(.secondary)
@@ -1032,17 +1032,17 @@ struct SettingsTabView: View {
                                 ZStack {
                                     Circle()
                                         .fill(option.swatchColor)
-                                        .frame(width: 20, height: 20)
+                                        .frame(width: 19, height: 19)
                                     if isSelected {
                                         Circle()
                                             .stroke(Color.primary, lineWidth: 1.8)
-                                            .frame(width: 25, height: 25)
+                                            .frame(width: 24, height: 24)
                                         Image(systemName: "checkmark")
                                             .font(.system(size: 9, weight: .bold))
                                             .foregroundColor(.white)
                                     }
                                 }
-                                .frame(width: 26, height: 26)
+                                .frame(width: 25, height: 25)
                                 .contentShape(Circle())
                             }
                             .buttonStyle(PlainButtonStyle())
@@ -1059,7 +1059,7 @@ struct SettingsTabView: View {
                 )
                 .font(.system(size: 12))
                 .lineLimit(1)
-                .frame(width: 322, height: 20, alignment: .leading)
+                .frame(width: 322, height: 18, alignment: .leading)
                 
                 Divider()
                 
@@ -1069,19 +1069,19 @@ struct SettingsTabView: View {
                 Divider()
                 
                 // About App
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: 1) {
                     Text("Calendar for macOS")
-                        .font(.system(size: 12, weight: .bold))
+                        .font(.system(size: 11.5, weight: .bold))
                     Text("Bikram Sambat 2000–2090 BS (Clean Date Calendar)")
                         .font(.system(size: 10))
                         .foregroundColor(.secondary)
                 }
-                .padding(.bottom, 10)
+                .padding(.bottom, 6)
             }
             .padding(.horizontal, 14)
             .frame(width: 350, alignment: .topLeading)
         }
-        .frame(width: 350, height: 425, alignment: .top)
+        .frame(width: 350, height: 382, alignment: .top)
     }
 }
 
